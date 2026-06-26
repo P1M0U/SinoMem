@@ -27,7 +27,7 @@ Copy the prompt below and send it to your AI Agent — it will handle clone, ins
 Please install Agent Memory Lite for me. Steps:
 
 1. Clone the repo to ~/Desktop/Agent-Memory-Lite/
-   git clone git@github.com:P1M0U/Agent-Memory-Lite.git ~/Desktop/Agent-Memory-Lite
+   git clone https://github.com/P1M0U/Agent-Memory-Lite.git ~/Desktop/Agent-Memory-Lite
 
 2. Enter the project and install dependencies with uv
    cd ~/Desktop/Agent-Memory-Lite
@@ -58,7 +58,7 @@ Tell me when done.
 Please install Agent Memory Lite for me. Steps:
 
 1. Clone the repo to ~/Desktop/Agent-Memory-Lite/
-   git clone git@gitee.com:pimou/Agent-Memory-Lite.git ~/Desktop/Agent-Memory-Lite
+   git clone https://gitee.com/pimou/Agent-Memory-Lite.git ~/Desktop/Agent-Memory-Lite
 
 2. Enter the project and install dependencies with uv
    cd ~/Desktop/Agent-Memory-Lite
@@ -89,7 +89,7 @@ Tell me when done.
 
 ```bash
 # 1. Clone
-git clone git@github.com:P1M0U/Agent-Memory-Lite.git ~/Desktop/Agent-Memory-Lite
+git clone https://github.com/P1M0U/Agent-Memory-Lite.git ~/Desktop/Agent-Memory-Lite
 cd ~/Desktop/Agent-Memory-Lite
 
 # 2. Install dependencies

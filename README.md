@@ -27,7 +27,7 @@
 请帮我安装 Agent Memory Lite 记忆系统，步骤如下：
 
 1. 克隆仓库到 ~/Desktop/Agent-Memory-Lite/
-   git clone git@github.com:P1M0U/Agent-Memory-Lite.git ~/Desktop/Agent-Memory-Lite
+   git clone https://github.com/P1M0U/Agent-Memory-Lite.git ~/Desktop/Agent-Memory-Lite
 
 2. 进入项目目录，用 uv 安装依赖
    cd ~/Desktop/Agent-Memory-Lite
@@ -58,7 +58,7 @@
 请帮我安装 Agent Memory Lite 记忆系统，步骤如下：
 
 1. 克隆仓库到 ~/Desktop/Agent-Memory-Lite/
-   git clone git@gitee.com:pimou/Agent-Memory-Lite.git ~/Desktop/Agent-Memory-Lite
+   git clone https://gitee.com/pimou/Agent-Memory-Lite.git ~/Desktop/Agent-Memory-Lite
 
 2. 进入项目目录，用 uv 安装依赖
    cd ~/Desktop/Agent-Memory-Lite
@@ -89,7 +89,7 @@
 
 ```bash
 # 1. 克隆
-git clone git@github.com:P1M0U/Agent-Memory-Lite.git ~/Desktop/Agent-Memory-Lite
+git clone https://github.com/P1M0U/Agent-Memory-Lite.git ~/Desktop/Agent-Memory-Lite
 cd ~/Desktop/Agent-Memory-Lite
 
 # 2. 安装依赖
