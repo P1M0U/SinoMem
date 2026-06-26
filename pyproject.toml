@@ -27,3 +27,32 @@ dev = [
     "pytest>=9.1.1",
     "ruff>=0.15.20",
 ]
+
+[tool.ruff]
+line-length = 79
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle 错误
+    "W",     # pycodestyle 警告
+    "F",     # Pyflakes（未使用导入等）
+    "I",     # isort（import 排序）
+    "UP",    # pyupgrade（现代化语法）
+    "B",     # flake8-bugbear（常见 bug）
+    "SIM",   # flake8-simplify（简化建议）
+]
+ignore = [
+    "E501",  # 行长度（由 format 处理）
+]
+exclude = [
+    ".venv",
+    "build",
+    "dist",
+    "__pycache__",
+    ".git",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
