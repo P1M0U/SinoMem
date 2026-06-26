@@ -4,6 +4,15 @@
 
 > v0.2.0
 
+![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-FTS5-003B57?logo=sqlite&logoColor=white)
+![jieba](https://img.shields.io/badge/jieba-中文分词-blue)
+![ONNX](https://img.shields.io/badge/ONNX-推理-FF6F00?logo=onnx&logoColor=white)
+![sqlite-vec](https://img.shields.io/badge/sqlite--vec-向量搜索-purple)
+![MCP](https://img.shields.io/badge/MCP-Server-green)
+![uv](https://img.shields.io/badge/uv-包管理-orange)
+![License](https://img.shields.io/badge/License-MIT-yellow)
+
 轻量级中文友好的 Agent 记忆增强系统。基于 SQLite + FTS5 + 本地向量搜索，零 API 调用。
 
 ## 特性

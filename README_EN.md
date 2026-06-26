@@ -4,6 +4,15 @@ English | [中文](README.md)
 
 > v0.2.0
 
+![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-FTS5-003B57?logo=sqlite&logoColor=white)
+![jieba](https://img.shields.io/badge/jieba-CJK-blue)
+![ONNX](https://img.shields.io/badge/ONNX-Inference-FF6F00?logo=onnx&logoColor=white)
+![sqlite-vec](https://img.shields.io/badge/sqlite--vec-Vector-purple)
+![MCP](https://img.shields.io/badge/MCP-Server-green)
+![uv](https://img.shields.io/badge/uv-Package--Mgr-orange)
+![License](https://img.shields.io/badge/License-MIT-yellow)
+
 Lightweight, Chinese-friendly Agent memory system with local semantic search. Built on SQLite + FTS5 + ONNX embeddings — zero API calls.
 
 ## Features
