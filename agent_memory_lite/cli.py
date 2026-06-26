@@ -18,6 +18,7 @@ def main(ctx, db_path, no_embed):
     if not no_embed:
         try:
             from .embedder import Embedder
+
             embedder = Embedder()
         except Exception:
             pass
@@ -39,7 +40,13 @@ def store(ctx, content, category, tags):
 
 @main.command()
 @click.argument("query")
-@click.option("-m", "--mode", default="keyword", type=click.Choice(["keyword", "semantic", "hybrid"]), help="搜索模式")
+@click.option(
+    "-m",
+    "--mode",
+    default="keyword",
+    type=click.Choice(["keyword", "semantic", "hybrid"]),
+    help="搜索模式",
+)
 @click.option("-l", "--limit", default=5, help="返回条数")
 @click.pass_context
 def search(ctx, query, mode, limit):
@@ -133,8 +140,10 @@ def stats(ctx):
 def migrate(db_path, model_dir):
     """为已有记忆生成向量嵌入"""
     from .migrate import migrate as do_migrate
+
     # 复用 migrate 命令的逻辑
     import sys
+
     sys.argv = ["migrate"]
     if db_path:
         sys.argv.extend(["--db", db_path])
@@ -151,6 +160,7 @@ def import_memories(source, db_path, dry_run):
     """从 holographic memory 导入记忆"""
     from .import_holographic import import_holographic
     import sys
+
     args = ["import"]
     if source:
         args.extend(["--source", source])

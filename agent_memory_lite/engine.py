@@ -62,6 +62,7 @@ class MemoryEngine:
             return
         try:
             import sqlite_vec
+
             self.conn.enable_load_extension(True)
             sqlite_vec.load(self.conn)
             self.conn.enable_load_extension(False)
@@ -86,7 +87,9 @@ class MemoryEngine:
         """是否有向量表"""
         return self._vec_dim > 0
 
-    def store(self, content: str, category: str = "general", tags: Optional[list[str]] = None) -> int:
+    def store(
+        self, content: str, category: str = "general", tags: Optional[list[str]] = None
+    ) -> int:
         """存储一条记忆，返回 id"""
         if tags is None:
             tags = []
@@ -117,7 +120,13 @@ class MemoryEngine:
         self.conn.commit()
         return row_id
 
-    def search(self, query: str, mode: str = "keyword", limit: int = 5, keyword_weight: float = 0.4) -> list[dict]:
+    def search(
+        self,
+        query: str,
+        mode: str = "keyword",
+        limit: int = 5,
+        keyword_weight: float = 0.4,
+    ) -> list[dict]:
         """搜索记忆
 
         Args:
@@ -176,7 +185,9 @@ class MemoryEngine:
         self._update_access(rows)
         return [self._row_to_dict(row, score=row["distance"]) for row in rows]
 
-    def _hybrid_search(self, query: str, limit: int, keyword_weight: float) -> list[dict]:
+    def _hybrid_search(
+        self, query: str, limit: int, keyword_weight: float
+    ) -> list[dict]:
         """混合搜索（关键词 + 语义加权排序）"""
         if not self._has_vec() or not self._embedder:
             return self._keyword_search(query, limit)
@@ -209,9 +220,13 @@ class MemoryEngine:
             results_map[rid] = r
 
         # 按总分排序
-        sorted_ids = sorted(scores.keys(), key=lambda x: scores[x], reverse=True)[:limit]
+        sorted_ids = sorted(scores.keys(), key=lambda x: scores[x], reverse=True)[
+            :limit
+        ]
 
-        self._update_access([results_map[rid] for rid in sorted_ids if rid in results_map])
+        self._update_access(
+            [results_map[rid] for rid in sorted_ids if rid in results_map]
+        )
 
         return [
             {**results_map[rid], "score": scores[rid]}
@@ -271,7 +286,13 @@ class MemoryEngine:
         ).fetchone()
         return self._row_to_dict(row) if row else None
 
-    def update(self, memory_id: int, content: Optional[str] = None, category: Optional[str] = None, tags: Optional[list[str]] = None) -> bool:
+    def update(
+        self,
+        memory_id: int,
+        content: Optional[str] = None,
+        category: Optional[str] = None,
+        tags: Optional[list[str]] = None,
+    ) -> bool:
         """更新记忆"""
         existing = self.get(memory_id)
         if not existing:
@@ -280,7 +301,11 @@ class MemoryEngine:
         new_content = content if content is not None else existing["content"]
         new_category = category if category is not None else existing["category"]
         new_tags = tags if tags is not None else existing["tags"]
-        tags_json = json.dumps(new_tags, ensure_ascii=False) if isinstance(new_tags, list) else new_tags
+        tags_json = (
+            json.dumps(new_tags, ensure_ascii=False)
+            if isinstance(new_tags, list)
+            else new_tags
+        )
         tokenized = tokenize(new_content)
 
         self.conn.execute(
@@ -342,7 +367,9 @@ class MemoryEngine:
         ).fetchall()
         vec_count = 0
         if self._has_vec():
-            vec_count = self.conn.execute("SELECT COUNT(*) FROM memories_vec").fetchone()[0]
+            vec_count = self.conn.execute(
+                "SELECT COUNT(*) FROM memories_vec"
+            ).fetchone()[0]
         return {
             "total": total,
             "categories": {row["category"]: row["cnt"] for row in categories},

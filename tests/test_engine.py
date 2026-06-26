@@ -1,8 +1,5 @@
 """单元测试 — engine.py + embedder.py（Phase 2）"""
 
-import tempfile
-from pathlib import Path
-
 import pytest
 
 from agent_memory_lite.engine import MemoryEngine
@@ -22,6 +19,7 @@ def engine_with_vec(tmp_path):
     """带向量索引的引擎（用于语义搜索测试）"""
     try:
         from agent_memory_lite.embedder import Embedder
+
         embedder = Embedder()
         db_path = tmp_path / "test_vec.db"
         eng = MemoryEngine(db_path, embedder=embedder)

@@ -20,7 +20,9 @@ def migrate(db_path, model_dir, batch_size):
     engine = MemoryEngine(db_path, embedder=embedder)
 
     # 获取所有记忆
-    rows = engine.conn.execute("SELECT id, content FROM memories ORDER BY id").fetchall()
+    rows = engine.conn.execute(
+        "SELECT id, content FROM memories ORDER BY id"
+    ).fetchall()
     total = len(rows)
 
     if total == 0:

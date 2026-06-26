@@ -34,7 +34,9 @@ def import_holographic(source, db_path, dry_run):
     if dry_run:
         for f in facts:
             tags = f["tags"] if f["tags"] else ""
-            click.echo(f"  #{f['fact_id']} [{f['category']}] trust={f['trust_score']:.2f}")
+            click.echo(
+                f"  #{f['fact_id']} [{f['category']}] trust={f['trust_score']:.2f}"
+            )
             click.echo(f"    {f['content'][:80]}")
             click.echo(f"    tags: {tags}")
             click.echo()
@@ -58,7 +60,11 @@ def import_holographic(source, db_path, dry_run):
         tags = []
         if f["tags"]:
             try:
-                tags = json.loads(f["tags"]) if f["tags"].startswith("[") else [t.strip() for t in f["tags"].split(",") if t.strip()]
+                tags = (
+                    json.loads(f["tags"])
+                    if f["tags"].startswith("[")
+                    else [t.strip() for t in f["tags"].split(",") if t.strip()]
+                )
             except (json.JSONDecodeError, TypeError):
                 tags = [t.strip() for t in f["tags"].split(",") if t.strip()]
 

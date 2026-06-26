@@ -14,6 +14,7 @@ def _get_engine() -> MemoryEngine:
     if _engine is None:
         try:
             from .embedder import Embedder
+
             embedder = Embedder()
             _engine = MemoryEngine(embedder=embedder)
         except Exception:
@@ -61,7 +62,9 @@ def get_memory(memory_id: int) -> dict | None:
 
 
 @mcp.tool()
-def update_memory(memory_id: int, content: str = "", category: str = "", tags: list[str] = []) -> dict:
+def update_memory(
+    memory_id: int, content: str = "", category: str = "", tags: list[str] = []
+) -> dict:
     """更新记忆内容/分类/标签
 
     Args:

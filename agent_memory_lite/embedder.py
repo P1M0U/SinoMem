@@ -40,8 +40,7 @@ class Embedder:
             model_file = onnx_path / "model.onnx"
         if not model_file.exists():
             raise FileNotFoundError(
-                f"ONNX 模型未找到: {onnx_path}\n"
-                f"请下载模型到 {onnx_path}/ 目录"
+                f"ONNX 模型未找到: {onnx_path}\n请下载模型到 {onnx_path}/ 目录"
             )
 
         self._session = ort.InferenceSession(
@@ -71,7 +70,9 @@ class Embedder:
         # 准备输入
         input_ids = np.array([encoded.ids], dtype=np.int64)
         attention_mask = np.array([encoded.attention_mask], dtype=np.int64)
-        token_type_ids = np.array([getattr(encoded, 'type_ids', [0] * len(encoded.ids))], dtype=np.int64)
+        token_type_ids = np.array(
+            [getattr(encoded, "type_ids", [0] * len(encoded.ids))], dtype=np.int64
+        )
 
         # 推理
         outputs = self._session.run(
