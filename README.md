@@ -2,6 +2,8 @@
 
 [English](README_EN.md) | 中文
 
+> v0.2.0
+
 轻量级中文友好的 Agent 记忆增强系统。基于 SQLite + FTS5 + 本地向量搜索，零 API 调用。
 
 ## 特性

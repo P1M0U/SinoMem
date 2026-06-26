@@ -2,6 +2,8 @@
 
 English | [中文](README.md)
 
+> v0.2.0
+
 Lightweight, Chinese-friendly Agent memory system with local semantic search. Built on SQLite + FTS5 + ONNX embeddings — zero API calls.
 
 ## Features
