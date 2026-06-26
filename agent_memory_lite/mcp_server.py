@@ -24,7 +24,9 @@ def _get_engine() -> MemoryEngine:
 
 
 @mcp.tool()
-def store_memory(content: str, category: str = "general", tags: list[str] = []) -> dict:
+def store_memory(
+    content: str, category: str = "general", tags: list[str] = None
+) -> dict:
     """存储一条记忆
 
     Args:
@@ -32,13 +34,17 @@ def store_memory(content: str, category: str = "general", tags: list[str] = []) 
         category: 分类 (user_pref, project, tool, general)
         tags: 标签列表
     """
+    if tags is None:
+        tags = []
     engine = _get_engine()
     memory_id = engine.store(content, category, tags)
     return {"id": memory_id, "status": "ok"}
 
 
 @mcp.tool()
-def search_memory(query: str, mode: str = "keyword", limit: int = 5) -> list[dict]:
+def search_memory(
+    query: str, mode: str = "keyword", limit: int = 5
+) -> list[dict]:
     """搜索记忆（支持 keyword / semantic / hybrid 三种模式）
 
     Args:
@@ -63,7 +69,10 @@ def get_memory(memory_id: int) -> dict | None:
 
 @mcp.tool()
 def update_memory(
-    memory_id: int, content: str = "", category: str = "", tags: list[str] = []
+    memory_id: int,
+    content: str = "",
+    category: str = "",
+    tags: list[str] = None,
 ) -> dict:
     """更新记忆内容/分类/标签
 
@@ -73,6 +82,8 @@ def update_memory(
         category: 新分类（留空不改）
         tags: 新标签（留空不改）
     """
+    if tags is None:
+        tags = []
     engine = _get_engine()
     ok = engine.update(
         memory_id,

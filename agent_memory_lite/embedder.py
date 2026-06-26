@@ -2,7 +2,6 @@
 
 import os
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import onnxruntime as ort
@@ -18,10 +17,10 @@ HF_MIRROR = os.environ.get("HF_ENDPOINT", "https://hf-mirror.com")
 class Embedder:
     """ONNX 嵌入模型封装"""
 
-    def __init__(self, model_dir: Optional[str | Path] = None):
+    def __init__(self, model_dir: str | Path | None = None):
         self.model_dir = Path(model_dir) if model_dir else DEFAULT_MODEL_DIR
-        self._session: Optional[ort.InferenceSession] = None
-        self._tokenizer: Optional[Tokenizer] = None
+        self._session: ort.InferenceSession | None = None
+        self._tokenizer: Tokenizer | None = None
         self._dim: int = 0
 
     @property
@@ -57,7 +56,9 @@ class Embedder:
 
         # 获取输出维度
         output_shape = self._session.get_outputs()[0].shape
-        self._dim = output_shape[-1] if isinstance(output_shape[-1], int) else 384
+        self._dim = (
+            output_shape[-1] if isinstance(output_shape[-1], int) else 384
+        )
 
     def embed(self, text: str) -> list[float]:
         """单条文本嵌入"""
@@ -71,7 +72,8 @@ class Embedder:
         input_ids = np.array([encoded.ids], dtype=np.int64)
         attention_mask = np.array([encoded.attention_mask], dtype=np.int64)
         token_type_ids = np.array(
-            [getattr(encoded, "type_ids", [0] * len(encoded.ids))], dtype=np.int64
+            [getattr(encoded, "type_ids", [0] * len(encoded.ids))],
+            dtype=np.int64,
         )
 
         # 推理

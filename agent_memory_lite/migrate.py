@@ -34,7 +34,9 @@ def migrate(db_path, model_dir, batch_size):
     # 检查已有向量
     existing_vecs = set()
     if engine._has_vec():
-        vec_rows = engine.conn.execute("SELECT id FROM memories_vec").fetchall()
+        vec_rows = engine.conn.execute(
+            "SELECT id FROM memories_vec"
+        ).fetchall()
         existing_vecs = {r["id"] for r in vec_rows}
 
     migrated = 0
@@ -61,7 +63,9 @@ def migrate(db_path, model_dir, batch_size):
         done = min(i + batch_size, total)
         click.echo(f"  {done}/{total}")
 
-    click.echo(f"done: {migrated} migrated, {skipped} skipped (already had vectors)")
+    click.echo(
+        f"done: {migrated} migrated, {skipped} skipped (already had vectors)"
+    )
     engine.close()
 
 

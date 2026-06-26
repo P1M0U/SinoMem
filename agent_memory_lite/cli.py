@@ -32,7 +32,9 @@ def main(ctx, db_path, no_embed):
 @click.pass_context
 def store(ctx, content, category, tags):
     """存储一条记忆"""
-    tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
+    tag_list = (
+        [t.strip() for t in tags.split(",") if t.strip()] if tags else []
+    )
     engine = ctx.obj["engine"]
     memory_id = engine.store(content, category, tag_list)
     click.echo(f"ok  id={memory_id}")
@@ -85,9 +87,13 @@ def get(ctx, memory_id):
 @click.pass_context
 def update(ctx, memory_id, content, category, tags):
     """更新记忆"""
-    tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else None
+    tag_list = (
+        [t.strip() for t in tags.split(",") if t.strip()] if tags else None
+    )
     engine = ctx.obj["engine"]
-    ok = engine.update(memory_id, content=content, category=category, tags=tag_list)
+    ok = engine.update(
+        memory_id, content=content, category=category, tags=tag_list
+    )
     click.echo("ok" if ok else "not found")
 
 
@@ -139,10 +145,10 @@ def stats(ctx):
 @click.option("--model-dir", default=None, help="嵌入模型目录")
 def migrate(db_path, model_dir):
     """为已有记忆生成向量嵌入"""
-    from .migrate import migrate as do_migrate
-
     # 复用 migrate 命令的逻辑
     import sys
+
+    from .migrate import migrate as do_migrate
 
     sys.argv = ["migrate"]
     if db_path:
@@ -153,13 +159,16 @@ def migrate(db_path, model_dir):
 
 
 @main.command("import")
-@click.option("--source", default=None, help="holographic memory_store.db 路径")
+@click.option(
+    "--source", default=None, help="holographic memory_store.db 路径"
+)
 @click.option("--db", "db_path", default=None, help="目标数据库路径")
 @click.option("--dry-run", is_flag=True, help="仅预览，不实际写入")
 def import_memories(source, db_path, dry_run):
     """从 holographic memory 导入记忆"""
-    from .import_holographic import import_holographic
     import sys
+
+    from .import_holographic import import_holographic
 
     args = ["import"]
     if source:

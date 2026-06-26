@@ -10,12 +10,18 @@ from .engine import MemoryEngine
 
 
 @click.command()
-@click.option("--source", default=None, help="holographic memory_store.db 路径")
-@click.option("--db", "db_path", default=None, help="Agent Memory Lite 数据库路径")
+@click.option(
+    "--source", default=None, help="holographic memory_store.db 路径"
+)
+@click.option(
+    "--db", "db_path", default=None, help="Agent Memory Lite 数据库路径"
+)
 @click.option("--dry-run", is_flag=True, help="仅预览，不实际写入")
 def import_holographic(source, db_path, dry_run):
     """从 holographic memory 导入记忆"""
-    source = Path(source) if source else Path.home() / ".hermes" / "memory_store.db"
+    source = (
+        Path(source) if source else Path.home() / ".hermes" / "memory_store.db"
+    )
     if not source.exists():
         click.echo(f"source not found: {source}")
         return

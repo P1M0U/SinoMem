@@ -1,0 +1,38 @@
+# ruff.toml — PEP8 标准配置
+
+# 行长度（PEP8 默认 79）
+line-length = 79
+
+# 目标 Python 版本
+target-version = "py311"
+
+[lint]
+# 启用的规则组
+select = [
+    "E",     # pycodestyle 错误
+    "W",     # pycodestyle 警告
+    "F",     # Pyflakes（未使用导入等）
+    "I",     # isort（import 排序）
+    "UP",    # pyupgrade（现代化语法）
+    "B",     # flake8-bugbear（常见 bug）
+    "SIM",   # flake8-simplify（简化建议）
+]
+
+# 忽略的规则
+ignore = [
+    "E501",  # 行长度（由 format 处理）
+]
+
+# 排除目录
+exclude = [
+    ".venv",
+    "build",
+    "dist",
+    "__pycache__",
+    ".git",
+]
+
+[format]
+# 格式化风格（pep8 = 传统风格）
+quote-style = "double"
+indent-style = "space"

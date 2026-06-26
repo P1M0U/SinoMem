@@ -1,9 +1,9 @@
 """SQLite 存储 + FTS5 中文搜索 + 向量语义搜索"""
 
+import contextlib
 import json
 import sqlite3
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 
@@ -40,7 +40,7 @@ CREATE INDEX IF NOT EXISTS idx_memories_created ON memories(created_at);
 class MemoryEngine:
     """记忆存储与搜索引擎（Phase 2: FTS5 + 向量 + 混合搜索）"""
 
-    def __init__(self, db_path: Optional[str | Path] = None, embedder=None):
+    def __init__(self, db_path: str | Path | None = None, embedder=None):
         self.db_path = Path(db_path) if db_path else DEFAULT_DB_PATH
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.conn = sqlite3.connect(str(self.db_path))
@@ -88,7 +88,10 @@ class MemoryEngine:
         return self._vec_dim > 0
 
     def store(
-        self, content: str, category: str = "general", tags: Optional[list[str]] = None
+        self,
+        content: str,
+        category: str = "general",
+        tags: list[str] | None = None,
     ) -> int:
         """存储一条记忆，返回 id"""
         if tags is None:
@@ -220,9 +223,9 @@ class MemoryEngine:
             results_map[rid] = r
 
         # 按总分排序
-        sorted_ids = sorted(scores.keys(), key=lambda x: scores[x], reverse=True)[
-            :limit
-        ]
+        sorted_ids = sorted(
+            scores.keys(), key=lambda x: scores[x], reverse=True
+        )[:limit]
 
         self._update_access(
             [results_map[rid] for rid in sorted_ids if rid in results_map]
@@ -279,7 +282,7 @@ class MemoryEngine:
             )
         self.conn.commit()
 
-    def get(self, memory_id: int) -> Optional[dict]:
+    def get(self, memory_id: int) -> dict | None:
         """获取指定记忆"""
         row = self.conn.execute(
             "SELECT * FROM memories WHERE id = ?", (memory_id,)
@@ -289,9 +292,9 @@ class MemoryEngine:
     def update(
         self,
         memory_id: int,
-        content: Optional[str] = None,
-        category: Optional[str] = None,
-        tags: Optional[list[str]] = None,
+        content: str | None = None,
+        category: str | None = None,
+        tags: list[str] | None = None,
     ) -> bool:
         """更新记忆"""
         existing = self.get(memory_id)
@@ -299,7 +302,9 @@ class MemoryEngine:
             return False
 
         new_content = content if content is not None else existing["content"]
-        new_category = category if category is not None else existing["category"]
+        new_category = (
+            category if category is not None else existing["category"]
+        )
         new_tags = tags if tags is not None else existing["tags"]
         tags_json = (
             json.dumps(new_tags, ensure_ascii=False)
@@ -313,7 +318,9 @@ class MemoryEngine:
             (new_content, new_category, tags_json, memory_id),
         )
         # 更新 FTS5
-        self.conn.execute("DELETE FROM memories_fts WHERE rowid=?", (memory_id,))
+        self.conn.execute(
+            "DELETE FROM memories_fts WHERE rowid=?", (memory_id,)
+        )
         self.conn.execute(
             "INSERT INTO memories_fts (rowid, content, tags, category) VALUES (?, ?, ?, ?)",
             (memory_id, tokenized, tags_json, new_category),
@@ -323,7 +330,9 @@ class MemoryEngine:
         if self._has_vec() and self._embedder:
             embedding = self._embedder.embed(new_content)
             embedding_bytes = np.array(embedding, dtype=np.float32).tobytes()
-            self.conn.execute("DELETE FROM memories_vec WHERE id=?", (memory_id,))
+            self.conn.execute(
+                "DELETE FROM memories_vec WHERE id=?", (memory_id,)
+            )
             self.conn.execute(
                 "INSERT INTO memories_vec (id, embedding) VALUES (?, ?)",
                 (memory_id, embedding_bytes),
@@ -338,14 +347,20 @@ class MemoryEngine:
         if not existing:
             return False
 
-        self.conn.execute("DELETE FROM memories_fts WHERE rowid=?", (memory_id,))
+        self.conn.execute(
+            "DELETE FROM memories_fts WHERE rowid=?", (memory_id,)
+        )
         if self._has_vec():
-            self.conn.execute("DELETE FROM memories_vec WHERE id=?", (memory_id,))
+            self.conn.execute(
+                "DELETE FROM memories_vec WHERE id=?", (memory_id,)
+            )
         self.conn.execute("DELETE FROM memories WHERE id=?", (memory_id,))
         self.conn.commit()
         return True
 
-    def list_memories(self, category: str = None, limit: int = 20) -> list[dict]:
+    def list_memories(
+        self, category: str = None, limit: int = 20
+    ) -> list[dict]:
         """列出记忆"""
         if category:
             rows = self.conn.execute(
@@ -361,7 +376,9 @@ class MemoryEngine:
 
     def stats(self) -> dict:
         """统计信息"""
-        total = self.conn.execute("SELECT COUNT(*) FROM memories").fetchone()[0]
+        total = self.conn.execute("SELECT COUNT(*) FROM memories").fetchone()[
+            0
+        ]
         categories = self.conn.execute(
             "SELECT category, COUNT(*) as cnt FROM memories GROUP BY category ORDER BY cnt DESC"
         ).fetchall()
@@ -377,14 +394,12 @@ class MemoryEngine:
             "vector_enabled": self._has_vec(),
         }
 
-    def _row_to_dict(self, row, score: Optional[float] = None) -> dict:
+    def _row_to_dict(self, row, score: float | None = None) -> dict:
         """将 sqlite3.Row 转为 dict"""
         d = dict(row)
         if "tags" in d and d["tags"]:
-            try:
+            with contextlib.suppress(json.JSONDecodeError, TypeError):
                 d["tags"] = json.loads(d["tags"])
-            except (json.JSONDecodeError, TypeError):
-                pass
         if score is not None:
             d["score"] = round(score, 4)
         return d
