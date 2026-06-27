@@ -13,16 +13,48 @@
 ![uv](https://img.shields.io/badge/uv-包管理-orange)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
-轻量级中文友好的 Agent 记忆增强系统。基于 SQLite + FTS5 + 本地向量搜索，零 API 调用。
+轻量级中文友好的 Agent 记忆增强系统。基于 SQLite + FTS5 + 本地 ONNX 向量搜索，零 API 调用。
 
 ## 特性
 
 - **中文 FTS5 搜索** — jieba 分词 + SQLite FTS5，零 API 调用
 - **语义搜索** — 本地 ONNX 嵌入模型（~113MB），不依赖外部服务
-- **混合搜索** — 关键词 + 语义加权排序
-- **MCP Server** — 标准协议，可接入任何支持 MCP 的 Agent
-- **CLI 工具** — 命令行操作，方便脚本集成
-- **数据迁移** — 支持从 holographic memory 导入
+- **批量嵌入推理** — ONNX Runtime batch 推理，大规模记忆导入性能更好
+- **混合搜索** — 关键词 + 语义加权排序，兼顾精确和模糊
+- **MCP Server** — 标准协议，7 个工具，可接入任何支持 MCP 的 Agent
+- **CLI 工具** — 8 个子命令（store / search / get / update / delete / list / stats / vacuum），方便脚本集成
+- **数据迁移** — 支持从 holographic memory 导入，支持为已有记忆补充向量
+- **内容安全防护** — 自动截断超长内容（8000 字符），防止搜索质量下降
+- **数据库维护** — 提供 VACUUM 命令，回收已删除的磁盘空间
+
+---
+
+## 项目结构
+
+```
+agent_memory_lite/
+├── __init__.py             # 版本号
+├── config.py               # 集中配置（路径、默认参数）
+├── engine.py               # 门面类 MemoryEngine，组合 store + search
+├── store.py                # 记忆 CRUD + VACUUM + 内容校验（MemoryStore）
+├── search.py               # 三模搜索引擎（SearchEngine）
+├── embedder.py             # ONNX 嵌入模型封装 + batch 推理（Embedder）
+├── schema.py               # SQLite schema 常量
+├── tokenizer.py            # jieba 中文分词
+├── cli.py                  # CLI 命令行工具
+├── mcp_server.py           # MCP Server 入口（FastMCP）
+├── migrate.py              # 向量迁移（为已有记忆生成嵌入）
+└── import_holographic.py   # 从 holographic memory 导入数据
+tests/
+├── test_engine.py          # 引擎集成测试
+├── test_store.py           # 存储层单元测试
+├── test_search.py          # 搜索层单元测试
+├── test_mcp_server.py      # MCP Server 测试
+├── test_migrate.py         # 迁移测试
+└── test_import_holographic.py  # 导入测试
+dicts/                      # 自定义 jieba 词典
+models/embedding/            # ONNX 嵌入模型（需单独下载）
+```
 
 ---
 
@@ -174,6 +206,9 @@ uv run python -m agent_memory_lite.cli stats
 
 # 列出所有记忆
 uv run python -m agent_memory_lite.cli list
+
+# 回收已删除的磁盘空间
+uv run python -m agent_memory_lite.cli vacuum
 ```
 
 ### MCP Server（Agent 自动调用）
@@ -202,6 +237,15 @@ uv run python -m agent_memory_lite.cli import --dry-run
 # 为已有记忆生成向量嵌入
 uv run python -m agent_memory_lite.cli migrate
 ```
+
+### 数据库维护
+
+```bash
+# 回收已删除记忆占用的磁盘空间
+uv run python -m agent_memory_lite.cli vacuum
+```
+
+大量删除记忆后，SQLite 不会自动回收空间。`vacuum` 命令会重建数据库文件，释放已删除的磁盘空间。
 
 ---
 

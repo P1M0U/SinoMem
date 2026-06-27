@@ -116,6 +116,10 @@ class MemoryEngine:
         """为已有记忆添加向量"""
         self._store.add_vector(memory_id, embedding_bytes)
 
+    def vacuum(self) -> dict:
+        """回收已删除空间，返回数据库文件大小变化"""
+        return self._store.vacuum()
+
     def close(self):
         """关闭数据库连接"""
         self.conn.close()

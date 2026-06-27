@@ -136,6 +136,20 @@ def stats(ctx):
 
 
 @main.command()
+@click.pass_context
+def vacuum(ctx):
+    """回收已删除的磁盘空间（VACUUM）"""
+    engine = ctx.obj["engine"]
+    result = engine.vacuum()
+    size_before_kb = result["size_before"] / 1024
+    size_after_kb = result["size_after"] / 1024
+    freed_kb = result["freed"] / 1024
+    click.echo(f"size_before: {size_before_kb:.1f} KB")
+    click.echo(f"size_after:  {size_after_kb:.1f} KB")
+    click.echo(f"freed:       {freed_kb:.1f} KB")
+
+
+@main.command()
 @click.option("--db", "db_path", default=None, help="数据库路径")
 @click.option("--model-dir", default=None, help="嵌入模型目录")
 @click.option("--batch-size", default=50, help="批量大小")

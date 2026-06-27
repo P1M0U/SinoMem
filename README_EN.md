@@ -19,10 +19,42 @@ Lightweight, Chinese-friendly Agent memory system with local semantic search. Bu
 
 - **Chinese FTS5 Search** — jieba tokenization + SQLite FTS5, zero API calls
 - **Semantic Search** — Local ONNX embedding model (~113MB), no external services
-- **Hybrid Search** — Keyword + semantic weighted ranking
-- **MCP Server** — Standard protocol, works with any MCP-compatible Agent
-- **CLI Tool** — Command-line interface for scripting and automation
-- **Data Migration** — Import from holographic memory
+- **Batch Embedding Inference** — ONNX Runtime batch inference for better performance on large-scale memory imports
+- **Hybrid Search** — Keyword + semantic weighted ranking, balancing precision and recall
+- **MCP Server** — Standard protocol, 7 tools, works with any MCP-compatible Agent
+- **CLI Tool** — 8 subcommands (store / search / get / update / delete / list / stats / vacuum) for scripting and automation
+- **Data Migration** — Import from holographic memory, generate embeddings for existing memories
+- **Content Validation** — Auto-truncation of overly long content (8000 chars) to prevent search quality degradation
+- **Database Maintenance** — Built-in VACUUM command to reclaim disk space after deletions
+
+---
+
+## Project Structure
+
+```
+agent_memory_lite/
+├── __init__.py             # Version
+├── config.py               # Centralized config (paths, defaults)
+├── engine.py               # Facade class MemoryEngine, composes store + search
+├── store.py                # Memory CRUD + VACUUM + content validation (MemoryStore)
+├── search.py               # Three-mode search engine (SearchEngine)
+├── embedder.py             # ONNX embedding model wrapper + batch inference (Embedder)
+├── schema.py               # SQLite schema constants
+├── tokenizer.py            # jieba Chinese tokenizer
+├── cli.py                  # CLI command-line tool
+├── mcp_server.py           # MCP Server entry point (FastMCP)
+├── migrate.py              # Vector migration (generate embeddings for existing memories)
+└── import_holographic.py   # Import data from holographic memory
+tests/
+├── test_engine.py          # Engine integration tests
+├── test_store.py           # Storage layer unit tests
+├── test_search.py          # Search layer unit tests
+├── test_mcp_server.py      # MCP Server tests
+├── test_migrate.py         # Migration tests
+└── test_import_holographic.py  # Import tests
+dicts/                      # Custom jieba dictionaries
+models/embedding/            # ONNX embedding model (download separately)
+```
 
 ---
 
@@ -131,6 +163,26 @@ chmod +x ~/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh
 
 Restart Hermes to activate.
 
+## Download Embedding Model (Optional, for Semantic Search)
+
+The embedding model is ~113MB and needs to be downloaded separately:
+
+```bash
+# Create model directory
+mkdir -p models/embedding/onnx
+
+# Download model files (choose one)
+
+# Option A: From HuggingFace
+pip install huggingface-hub
+python -c "from huggingface_hub import hf_hub_download; hf_hub_download('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', 'onnx/model_quantized.onnx', local_dir='models/embedding'); hf_hub_download('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', 'tokenizer.json', local_dir='models/embedding')"
+
+# Option B: From hf-mirror.com (faster in China)
+HF_ENDPOINT=https://hf-mirror.com python -c "from huggingface_hub import hf_hub_download; hf_hub_download('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', 'onnx/model_quantized.onnx', local_dir='models/embedding'); hf_hub_download('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', 'tokenizer.json', local_dir='models/embedding')"
+```
+
+Without the model, semantic search degrades gracefully to keyword search.
+
 ---
 
 ## Usage
@@ -155,6 +207,9 @@ uv run python -m agent_memory_lite.cli stats
 
 # List all memories
 uv run python -m agent_memory_lite.cli list
+
+# Reclaim disk space after deletes
+uv run python -m agent_memory_lite.cli vacuum
 ```
 
 ### MCP Server (Agent auto-calls)
@@ -183,6 +238,15 @@ uv run python -m agent_memory_lite.cli import --dry-run
 # Generate vector embeddings for existing memories
 uv run python -m agent_memory_lite.cli migrate
 ```
+
+### Database Maintenance
+
+```bash
+# Reclaim disk space from deleted memories
+uv run python -m agent_memory_lite.cli vacuum
+```
+
+After heavy deletions, SQLite does not automatically reclaim disk space. The `vacuum` command rebuilds the database file to free space.
 
 ---
 
