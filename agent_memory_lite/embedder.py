@@ -1,17 +1,12 @@
 """嵌入模型封装 — onnxruntime + ONNX 量化模型"""
 
-import os
 from pathlib import Path
 
 import numpy as np
 import onnxruntime as ort
 from tokenizers import Tokenizer
 
-# 默认模型路径（项目内 models/embedding/）
-DEFAULT_MODEL_DIR = Path(__file__).parent.parent / "models" / "embedding"
-
-# HF 镜像（国内下载用）
-HF_MIRROR = os.environ.get("HF_ENDPOINT", "https://hf-mirror.com")
+from .config import DEFAULT_MODEL_DIR
 
 
 class Embedder:

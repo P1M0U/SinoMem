@@ -1,25 +1,32 @@
 """MCP Server 入口 — Agent 通过 stdin/stdout 调用"""
 
 from fastmcp import FastMCP
+from fastmcp.server.lifespan import lifespan
 
-from .engine import MemoryEngine
-
-mcp = FastMCP("agent-memory-lite")
+from .engine import MemoryEngine, create_engine
 
 _engine: MemoryEngine | None = None
 
 
+@lifespan
+async def engine_lifespan(server):
+    """管理 MemoryEngine 生命周期：启动时创建，退出时 close"""
+    global _engine
+    _engine = create_engine()
+    yield
+    if _engine:
+        _engine.close()
+        _engine = None
+
+
+mcp = FastMCP("agent-memory-lite", lifespan=engine_lifespan)
+
+
 def _get_engine() -> MemoryEngine:
+    """获取引擎实例（lazy init 兜底）"""
     global _engine
     if _engine is None:
-        try:
-            from .embedder import Embedder
-
-            embedder = Embedder()
-            _engine = MemoryEngine(embedder=embedder)
-        except Exception:
-            # 嵌入模型不可用时降级为纯 FTS5
-            _engine = MemoryEngine()
+        _engine = create_engine()
     return _engine
 
 

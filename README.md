@@ -2,7 +2,7 @@
 
 [English](README_EN.md) | 中文
 
-> v0.2.0
+> v0.5.0
 
 ![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-FTS5-003B57?logo=sqlite&logoColor=white)
@@ -107,6 +107,25 @@ uv sync
 # 3. 验证
 uv run python -c "from agent_memory_lite.engine import MemoryEngine; print('ok')"
 ```
+
+## 下载嵌入模型（可选，用于语义搜索）
+
+嵌入模型约 113MB，需单独下载：
+
+```bash
+# 创建模型目录
+mkdir -p models/embedding/onnx
+
+# 下载模型文件（二选一）
+# 方式一：从 HuggingFace 下载
+pip install huggingface-hub
+python -c "from huggingface_hub import hf_hub_download; hf_hub_download('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', 'onnx/model_quantized.onnx', local_dir='models/embedding'); hf_hub_download('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', 'tokenizer.json', local_dir='models/embedding')"
+
+# 方式二：从 hf-mirror.com 下载（国内更快）
+HF_ENDPOINT=https://hf-mirror.com python -c "from huggingface_hub import hf_hub_download; hf_hub_download('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', 'onnx/model_quantized.onnx', local_dir='models/embedding'); hf_hub_download('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', 'tokenizer.json', local_dir='models/embedding')"
+```
+
+不下载模型也能使用，语义搜索会自动降级为关键词搜索。
 
 ## 手动配置 Hermes MCP
 

@@ -4,7 +4,7 @@ import json
 
 import click
 
-from .engine import MemoryEngine
+from .engine import MemoryEngine, create_engine
 
 
 @click.group()
@@ -14,15 +14,10 @@ from .engine import MemoryEngine
 def main(ctx, db_path, no_embed):
     """Agent Memory Lite — 轻量级中文记忆系统"""
     ctx.ensure_object(dict)
-    embedder = None
-    if not no_embed:
-        try:
-            from .embedder import Embedder
-
-            embedder = Embedder()
-        except Exception:
-            pass
-    ctx.obj["engine"] = MemoryEngine(db_path, embedder=embedder)
+    if no_embed:
+        ctx.obj["engine"] = MemoryEngine(db_path)
+    else:
+        ctx.obj["engine"] = create_engine(db_path)
 
 
 @main.command()
@@ -143,19 +138,15 @@ def stats(ctx):
 @main.command()
 @click.option("--db", "db_path", default=None, help="数据库路径")
 @click.option("--model-dir", default=None, help="嵌入模型目录")
-def migrate(db_path, model_dir):
+@click.option("--batch-size", default=50, help="批量大小")
+def migrate(db_path, model_dir, batch_size):
     """为已有记忆生成向量嵌入"""
-    # 复用 migrate 命令的逻辑
-    import sys
+    from .migrate import migrate_memories
 
-    from .migrate import migrate as do_migrate
-
-    sys.argv = ["migrate"]
-    if db_path:
-        sys.argv.extend(["--db", db_path])
-    if model_dir:
-        sys.argv.extend(["--model-dir", model_dir])
-    do_migrate()
+    result = migrate_memories(db_path, model_dir, batch_size)
+    click.echo(
+        f"done: {result['migrated']} migrated, {result['skipped']} skipped"
+    )
 
 
 @main.command("import")
@@ -166,19 +157,15 @@ def migrate(db_path, model_dir):
 @click.option("--dry-run", is_flag=True, help="仅预览，不实际写入")
 def import_memories(source, db_path, dry_run):
     """从 holographic memory 导入记忆"""
-    import sys
+    from .import_holographic import import_from_holographic
 
-    from .import_holographic import import_holographic
-
-    args = ["import"]
-    if source:
-        args.extend(["--source", source])
-    if db_path:
-        args.extend(["--db", db_path])
+    result = import_from_holographic(source, db_path, dry_run)
     if dry_run:
-        args.append("--dry-run")
-    sys.argv = args
-    import_holographic()
+        click.echo(f"would import {result['total']} facts (dry run)")
+        return
+    click.echo(
+        f"done: {result['imported']} imported, {result['skipped']} skipped"
+    )
 
 
 if __name__ == "__main__":
