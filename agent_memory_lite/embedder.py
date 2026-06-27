@@ -97,5 +97,62 @@ class Embedder:
         return normalized[0].tolist()
 
     def embed_batch(self, texts: list[str]) -> list[list[float]]:
-        """批量文本嵌入"""
-        return [self.embed(text) for text in texts]
+        """批量文本嵌入 — 利用 ONNX Runtime batch 推理"""
+        if not texts:
+            return []
+        if len(texts) == 1:
+            return [self.embed(texts[0])]
+
+        if self._session is None:
+            self._load()
+
+        # 批量分词
+        encodings = [self._tokenizer.encode(text) for text in texts]
+        max_len = max(len(e.ids) for e in encodings)
+
+        # 填充到相同长度，构造 batch 输入 (batch_size, max_len)
+        batch_ids = []
+        batch_mask = []
+        batch_type_ids = []
+
+        for encoded in encodings:
+            pad_len = max_len - len(encoded.ids)
+            ids = encoded.ids + [0] * pad_len
+            mask = encoded.attention_mask + [0] * pad_len
+            type_ids = (
+                getattr(encoded, "type_ids", [0] * len(encoded.ids))
+                + [0] * pad_len
+            )
+
+            batch_ids.append(ids)
+            batch_mask.append(mask)
+            batch_type_ids.append(type_ids)
+
+        input_ids = np.array(batch_ids, dtype=np.int64)
+        attention_mask = np.array(batch_mask, dtype=np.int64)
+        token_type_ids = np.array(batch_type_ids, dtype=np.int64)
+
+        # 单次 batch 推理
+        outputs = self._session.run(
+            None,
+            {
+                "input_ids": input_ids,
+                "attention_mask": attention_mask,
+                "token_type_ids": token_type_ids,
+            },
+        )
+
+        # 平均池化 + L2 归一化（逐样本）
+        token_embeddings = outputs[0]  # (batch_size, max_len, dim)
+        mask_expanded = np.expand_dims(attention_mask, axis=-1)
+        mask_expanded = np.broadcast_to(mask_expanded, token_embeddings.shape)
+
+        sum_embeddings = np.sum(token_embeddings * mask_expanded, axis=1)
+        sum_mask = np.clip(mask_expanded.sum(axis=1), a_min=1e-9, a_max=None)
+        pooled = sum_embeddings / sum_mask
+
+        # L2 归一化
+        norms = np.linalg.norm(pooled, axis=1, keepdims=True)
+        normalized = pooled / np.clip(norms, a_min=1e-9, a_max=None)
+
+        return normalized.tolist()

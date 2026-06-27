@@ -4,7 +4,7 @@ import sqlite3
 
 import numpy as np
 
-from .store import _row_to_dict
+from .store import _row_to_dict, update_access
 from .tokenizer import tokenize
 
 
@@ -63,7 +63,7 @@ class SearchEngine:
             (tokenized_query, limit),
         ).fetchall()
 
-        self._update_access(rows)
+        update_access(self.conn, rows)
         return [
             _row_to_dict(row, score=round(1.0 / (1.0 + abs(row["rank"])), 4))
             for row in rows
@@ -90,7 +90,7 @@ class SearchEngine:
             (query_bytes, limit),
         ).fetchall()
 
-        self._update_access(rows)
+        update_access(self.conn, rows)
         return [
             _row_to_dict(row, score=round(row["distance"], 4)) for row in rows
         ]
@@ -139,8 +139,9 @@ class SearchEngine:
             scores.keys(), key=lambda x: scores[x], reverse=True
         )[:limit]
 
-        self._update_access(
-            [results_map[rid] for rid in sorted_ids if rid in results_map]
+        update_access(
+            self.conn,
+            [results_map[rid] for rid in sorted_ids if rid in results_map],
         )
 
         return [
@@ -190,13 +191,3 @@ class SearchEngine:
             _row_to_dict(row, score=round(1.0 / (1.0 + row["distance"]), 4))
             for row in rows
         ]
-
-    def _update_access(self, rows):
-        """批量更新访问计数"""
-        for row in rows:
-            self.conn.execute(
-                "UPDATE memories SET access_count = access_count + 1, "
-                "last_accessed = CURRENT_TIMESTAMP WHERE id = ?",
-                (row["id"],),
-            )
-        self.conn.commit()

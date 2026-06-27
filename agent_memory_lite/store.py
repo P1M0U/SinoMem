@@ -8,6 +8,9 @@ import numpy as np
 
 from .tokenizer import tokenize
 
+# 内容最大长度（字符数），防止 LLM 写入超长文本导致搜索质量下降
+MAX_CONTENT_LENGTH = 8000
+
 
 def _row_to_dict(row, score: float | None = None) -> dict:
     """将 sqlite3.Row 转为 dict，解析 tags JSON"""
@@ -18,6 +21,17 @@ def _row_to_dict(row, score: float | None = None) -> dict:
     if score is not None:
         d["score"] = round(score, 4)
     return d
+
+
+def update_access(conn: sqlite3.Connection, rows: list) -> None:
+    """批量更新访问计数（模块级函数，供 MemoryStore 和 SearchEngine 共用）"""
+    for row in rows:
+        conn.execute(
+            "UPDATE memories SET access_count = access_count + 1, "
+            "last_accessed = CURRENT_TIMESTAMP WHERE id = ?",
+            (row["id"],),
+        )
+    conn.commit()
 
 
 class MemoryStore:
@@ -46,6 +60,15 @@ class MemoryStore:
         """存储一条记忆，返回 id"""
         if tags is None:
             tags = []
+
+        # 校验内容长度：截断过长内容，防止搜索质量下降
+        content = content.strip()
+        if len(content) > MAX_CONTENT_LENGTH:
+            content = content[:MAX_CONTENT_LENGTH]
+
+        if not content:
+            raise ValueError("内容不能为空")
+
         tags_json = json.dumps(tags, ensure_ascii=False)
         tokenized = tokenize(content)
 
@@ -94,6 +117,12 @@ class MemoryStore:
             return False
 
         new_content = content if content is not None else existing["content"]
+        # 截断过长内容
+        new_content = new_content.strip()
+        if len(new_content) > MAX_CONTENT_LENGTH:
+            new_content = new_content[:MAX_CONTENT_LENGTH]
+        if not new_content:
+            raise ValueError("内容不能为空")
         new_category = (
             category if category is not None else existing["category"]
         )
@@ -190,16 +219,6 @@ class MemoryStore:
             "vector_enabled": self._has_vec(),
         }
 
-    def _update_access(self, rows):
-        """批量更新访问计数"""
-        for row in rows:
-            self.conn.execute(
-                "UPDATE memories SET access_count = access_count + 1, "
-                "last_accessed = CURRENT_TIMESTAMP WHERE id = ?",
-                (row["id"],),
-            )
-        self.conn.commit()
-
     def exists_by_content(self, content: str) -> bool:
         """检查是否已存在相同内容的记忆"""
         row = self.conn.execute(
@@ -223,3 +242,25 @@ class MemoryStore:
             (memory_id, embedding_bytes),
         )
         self.conn.commit()
+
+    def vacuum(self) -> dict:
+        """回收已删除空间，返回数据库文件大小（字节）变化"""
+        import os
+
+        db_path = None
+        # 查找数据库文件路径
+        self.conn.execute("PRAGMA database_list")
+        for row in self.conn.execute("PRAGMA database_list"):
+            if row["name"] == "main":
+                db_path = row["file"]
+                break
+
+        size_before = os.path.getsize(db_path) if db_path else 0
+        self.conn.execute("VACUUM")
+        size_after = os.path.getsize(db_path) if db_path else 0
+
+        return {
+            "size_before": size_before,
+            "size_after": size_after,
+            "freed": size_before - size_after,
+        }
