@@ -5,7 +5,7 @@ import sqlite3
 import numpy as np
 
 from .store import _row_to_dict, update_access
-from .tokenizer import tokenize
+from .tokenizer import tokenize_for_fts5
 
 
 class SearchEngine:
@@ -48,8 +48,9 @@ class SearchEngine:
             return self._keyword_search(query, limit)
 
     def _keyword_search(self, query: str, limit: int) -> list[dict]:
-        """FTS5 关键词搜索"""
-        tokenized_query = tokenize(query)
+        """FTS5 关键词搜索（多词 AND 模式）"""
+        # 存储时用空格分隔的 jieba 分词，查询时也用 AND 连接
+        tokenized_query = tokenize_for_fts5(query)
 
         rows = self.conn.execute(
             """
@@ -152,7 +153,7 @@ class SearchEngine:
 
     def _keyword_search_raw(self, query: str, limit: int) -> list[dict]:
         """关键词搜索（不更新访问计数）"""
-        tokenized_query = tokenize(query)
+        tokenized_query = tokenize_for_fts5(query)
         rows = self.conn.execute(
             """
             SELECT m.id, m.content, m.category, m.tags, m.created_at, rank

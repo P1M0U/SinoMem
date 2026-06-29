@@ -4,8 +4,6 @@ import contextlib
 import json
 import sqlite3
 
-import numpy as np
-
 from .tokenizer import tokenize
 
 # 内容最大长度（字符数），防止 LLM 写入超长文本导致搜索质量下降
@@ -102,8 +100,10 @@ class MemoryStore:
             (row_id, tokenized, tags_json, category),
         )
 
-        # 向量存储
+        # 向量存储（仅向量模式下才 import numpy）
         if self._has_vec() and self._embedder:
+            import numpy as np
+
             embedding = self._embedder.embed(content)
             embedding_bytes = np.array(embedding, dtype=np.float32).tobytes()
             self.conn.execute(
@@ -166,8 +166,10 @@ class MemoryStore:
             (memory_id, tokenized, tags_json, new_category),
         )
 
-        # 更新向量
+        # 更新向量（仅向量模式下才 import numpy）
         if self._has_vec() and self._embedder:
+            import numpy as np
+
             embedding = self._embedder.embed(new_content)
             embedding_bytes = np.array(embedding, dtype=np.float32).tobytes()
             self.conn.execute(

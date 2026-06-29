@@ -21,6 +21,8 @@ def engine_with_vec(tmp_path):
         from agent_memory_lite.core.embedder import Embedder
 
         embedder = Embedder()
+        # 主动触发模型加载（懒加载在 .dim 才真正执行）
+        _ = embedder.dim
         db_path = tmp_path / "test_vec.db"
         eng = MemoryEngine(db_path, embedder=embedder)
         yield eng

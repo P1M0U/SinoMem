@@ -63,6 +63,7 @@ def import_from_holographic(source=None, db_path=None, dry_run=False) -> dict:
             content=f["content"],
             category=f["category"] or "general",
             tags=tags,
+            skip_duplicate=False,  # 上游已做 exists_by_content 去重，跳过重复检查
         )
         imported += 1
 

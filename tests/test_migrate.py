@@ -36,7 +36,9 @@ class TestMigrate:
         try:
             from agent_memory_lite.core.embedder import Embedder
 
-            Embedder()
+            # 主动触发模型加载
+            embedder = Embedder()
+            _ = embedder.dim
         except Exception:
             pytest.skip("嵌入模型不可用，跳过")
 
