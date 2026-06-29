@@ -61,3 +61,53 @@ class TestStoreCRUD:
         engine.store("独一无二的内容")
         assert engine.exists_by_content("独一无二的内容") is True
         assert engine.exists_by_content("不存在的内容") is False
+
+    def test_store_empty_content_raises(self, engine):
+        """空内容应抛出 ValueError"""
+        with pytest.raises(ValueError, match="内容不能为空"):
+            engine.store("")
+        with pytest.raises(ValueError, match="内容不能为空"):
+            engine.store("   ")
+
+    def test_store_truncates_long_content(self, engine):
+        """超过 8000 字的内容应被截断"""
+        long_content = "测试" * 5000  # 10000 字 > 8000
+        mid = engine.store(long_content)
+        item = engine.get(mid)
+        assert len(item["content"]) <= 8000
+
+    def test_store_dedup(self, engine):
+        """默认跳过重复内容"""
+        mid1 = engine.store("相同内容")
+        mid2 = engine.store("相同内容")
+        assert mid1 == mid2  # 返回相同 id
+
+    def test_store_allow_duplicate(self, engine):
+        """允许重复时创建新记录"""
+        mid1 = engine.store("相同内容")
+        mid2 = engine.store("相同内容", skip_duplicate=False)
+        assert mid1 != mid2  # 不同 id
+
+    def test_delete_by_category(self, engine):
+        """按分类批量删除"""
+        engine.store("a", category="test-cat")
+        engine.store("b", category="test-cat")
+        engine.store("c", category="other")
+        count = engine.delete_by_category("test-cat")
+        assert count == 2
+        assert engine.list_memories(category="test-cat") == []
+
+    def test_delete_all(self, engine):
+        """清空所有记忆"""
+        engine.store("a")
+        engine.store("b")
+        engine.store("c")
+        count = engine.delete_all()
+        assert count == 3
+        assert engine.stats()["total"] == 0
+
+    def test_reindex_fts(self, engine):
+        """FTS5 重建索引"""
+        engine.store("测试重新分词")  # noqa: B018
+        result = engine.reindex_fts()
+        assert result["reindexed"] >= 1

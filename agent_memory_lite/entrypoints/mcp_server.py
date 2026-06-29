@@ -23,10 +23,12 @@ mcp = FastMCP("agent-memory-lite", lifespan=engine_lifespan)
 
 
 def _get_engine() -> MemoryEngine:
-    """获取引擎实例（lazy init 兜底）"""
+    """获取引擎实例（仅 lifespan 初始化后可用）"""
     global _engine
     if _engine is None:
-        _engine = create_engine()
+        raise RuntimeError(
+            "引擎尚未初始化，请确保 MCP Server 通过 lifespan 启动"
+        )
     return _engine
 
 

@@ -2,8 +2,6 @@
 
 import sqlite3
 
-import numpy as np
-
 from .store import _row_to_dict, update_access
 from .tokenizer import tokenize_for_fts5
 
@@ -77,6 +75,8 @@ class SearchEngine:
             return self._keyword_search(query, limit)
 
         query_embedding = self._embedder.embed(query)
+        import numpy as np
+
         query_bytes = np.array(query_embedding, dtype=np.float32).tobytes()
 
         rows = self.conn.execute(
@@ -176,6 +176,8 @@ class SearchEngine:
             return []
 
         query_embedding = self._embedder.embed(query)
+        import numpy as np
+
         query_bytes = np.array(query_embedding, dtype=np.float32).tobytes()
 
         rows = self.conn.execute(

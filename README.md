@@ -220,7 +220,7 @@ uv run python -m agent_memory_lite.entrypoints.cli vacuum
 
 ### MCP Server（Agent 自动调用）
 
-配置完成后，Agent 可以直接调用以下 7 个工具：
+配置完成后，Agent 可以直接调用以下 9 个工具：
 
 | 工具名 | 说明 |
 |--------|------|

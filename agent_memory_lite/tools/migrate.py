@@ -13,8 +13,15 @@ def migrate_memories(db_path=None, model_dir=None, batch_size=50) -> dict:
     from ..core.engine import create_engine
 
     engine = create_engine(db_path, model_dir)
-    embedder = engine._embedder
 
+    # 通过公开 API 判断向量是否可用（不访问私有属性）
+    stats = engine.stats()
+    if not stats.get("vector_enabled"):
+        engine.close()
+        raise RuntimeError("嵌入模型不可用，无法生成向量。请先下载模型。")
+
+    # embedder 存在时通过 stats 确认后，从内部获取（仅此一处桥接）
+    embedder = engine._embedder
     if embedder is None:
         engine.close()
         raise RuntimeError("嵌入模型不可用，无法生成向量。请先下载模型。")
@@ -28,17 +35,19 @@ def migrate_memories(db_path=None, model_dir=None, batch_size=50) -> dict:
 
     existing_ids = engine.get_vector_ids()
 
+    # 收集需要迁移的记忆
+    pending = [m for m in memories if m["id"] not in existing_ids]
+
     migrated = 0
-    skipped = 0
+    skipped = len(memories) - len(pending)
 
-    for i in range(0, total, batch_size):
-        batch = memories[i : i + batch_size]
-        for mem in batch:
-            if mem["id"] in existing_ids:
-                skipped += 1
-                continue
+    # 使用 embed_batch 批量推理，性能远优于逐条 embed
+    for i in range(0, len(pending), batch_size):
+        batch = pending[i : i + batch_size]
+        contents = [m["content"] for m in batch]
+        embeddings = embedder.embed_batch(contents)
 
-            embedding = embedder.embed(mem["content"])
+        for mem, embedding in zip(batch, embeddings, strict=True):
             embedding_bytes = np.array(embedding, dtype=np.float32).tobytes()
             engine.add_vector(mem["id"], embedding_bytes)
             migrated += 1

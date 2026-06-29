@@ -221,7 +221,7 @@ uv run python -m agent_memory_lite.entrypoints.cli vacuum
 
 ### MCP Server (Agent auto-calls)
 
-Once configured, the Agent can call these 7 tools directly:
+Once configured, the Agent can call these 9 tools directly:
 
 | Tool | Description |
 |------|-------------|
