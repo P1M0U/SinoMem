@@ -1,9 +1,10 @@
 """数据库 schema 常量"""
 
 # FTS5 tokenizer 说明：
-# - jieba 预分词已处理中文分词，写入 FTS5 前 content 已变为空格分隔的词语
-# - unicode61 处理非中文部分（英文、数字等），remove_diacritics 2 去除变音符号
-# - 最小 token 长度 2，过滤单字噪音
+# - jieba 预分词处理中文，写入 FTS5 前 content 已变为空格分隔的词语
+# - unicode61 处理非中文部分（英文、数字等）
+# - 不使用 content=memories 外部内容表，确保 jieba 分词结果真正写入 FTS5 索引
+# - 写入和查询使用同一套 jieba 分词，token 完全对齐
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS memories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -20,9 +21,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
     content,
     tags,
     category,
-    content=memories,
-    content_rowid=id,
-    tokenize='unicode61 remove_diacritics 2'
+    tokenize='unicode61'
 );
 
 CREATE INDEX IF NOT EXISTS idx_memories_category ON memories(category);

@@ -2,7 +2,7 @@
 
 English | [中文](README.md)
 
-> v0.5.5
+> v0.5.6
 
 ![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-FTS5-003B57?logo=sqlite&logoColor=white)
@@ -17,8 +17,8 @@ Lightweight, Chinese-friendly Agent memory system with local semantic search. Bu
 
 ## Features
 
-- **Chinese FTS5 Search** — jieba tokenization + SQLite FTS5, zero API calls
-- **Semantic Search** — Local ONNX embedding model (~113MB), no external services
+- **Chinese FTS5 Search** — jieba tokenization + SQLite FTS5, same tokenizer for write and query, token-aligned
+- **Semantic Search** — Local ONNX embedding model (~113MB), optional install, no external services
 - **Batch Embedding Inference** — ONNX Runtime batch inference for better performance on large-scale memory imports
 - **Hybrid Search** — Keyword + semantic weighted ranking, balancing precision and recall
 - **MCP Server** — Standard protocol, 10 tools, works with any MCP-compatible Agent
@@ -27,6 +27,7 @@ Lightweight, Chinese-friendly Agent memory system with local semantic search. Bu
 - **Content Validation** — Auto-truncation of overly long content (8000 chars) to prevent search quality degradation
 - **Auto Deduplication** — Skips duplicate content by default, configurable via parameter
 - **Database Maintenance** — VACUUM, reindex, batch delete by category
+- **Thread-safe** — check_same_thread=False for multi-agent concurrent access
 
 ---
 

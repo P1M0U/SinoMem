@@ -2,7 +2,7 @@
 
 [English](README_EN.md) | 中文
 
-> v0.5.5
+> v0.5.6
 
 ![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-FTS5-003B57?logo=sqlite&logoColor=white)
@@ -17,8 +17,8 @@
 
 ## 特性
 
-- **中文 FTS5 搜索** — jieba 分词 + SQLite FTS5，零 API 调用
-- **语义搜索** — 本地 ONNX 嵌入模型（~113MB），不依赖外部服务
+- **中文 FTS5 搜索** — jieba 分词 + SQLite FTS5，写入和查询用同一套分词器，token 完全对齐
+- **语义搜索** — 本地 ONNX 嵌入模型（~113MB），可选安装，不依赖外部服务
 - **批量嵌入推理** — ONNX Runtime batch 推理，大规模记忆导入性能更好
 - **混合搜索** — 关键词 + 语义加权排序，兼顾精确和模糊
 - **MCP Server** — 标准协议，10 个工具，可接入任何支持 MCP 的 Agent
@@ -27,6 +27,7 @@
 - **内容安全防护** — 自动截断超长内容（8000 字符），防止搜索质量下降
 - **自动去重** — 默认跳过重复内容，可通过参数关闭
 - **数据库维护** — VACUUM 回收空间、reindex 重建索引、clean 批量删除
+- **线程安全** — check_same_thread=False，支持多 Agent 并发访问
 
 ---
 
