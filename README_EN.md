@@ -121,9 +121,9 @@ Please install Agent Memory Lite for me. Steps:
 1. Clone the repo to ~/Desktop/Agent-Memory-Lite/
    git clone https://github.com/P1M0U/Agent-Memory-Lite.git ~/Desktop/Agent-Memory-Lite
 
-2. Enter the project and install dependencies with uv
+2. Enter the project and install dependencies with uv (use Tsinghua mirror for speed in China)
    cd ~/Desktop/Agent-Memory-Lite
-   uv sync
+   uv sync --index-url https://pypi.tuna.tsinghua.edu.cn/simple
 
 3. Verify the installation works
    uv run python -c "from agent_memory_lite.core.engine import MemoryEngine; print('ok')"
@@ -152,9 +152,9 @@ Please install Agent Memory Lite for me. Steps:
 1. Clone the repo to ~/Desktop/Agent-Memory-Lite/
    git clone https://gitee.com/pimou/Agent-Memory-Lite.git ~/Desktop/Agent-Memory-Lite
 
-2. Enter the project and install dependencies with uv
+2. Enter the project and install dependencies with uv (use Tsinghua mirror for speed in China)
    cd ~/Desktop/Agent-Memory-Lite
-   uv sync
+   uv sync --index-url https://pypi.tuna.tsinghua.edu.cn/simple
 
 3. Verify the installation works
    uv run python -c "from agent_memory_lite.core.engine import MemoryEngine; print('ok')"
@@ -327,3 +327,11 @@ CLI:           click
 ## License
 
 MIT
+
+---
+
+## Contact
+
+- 📧 Email: [p1m0u@foxmail.com](mailto:p1m0u@foxmail.com)
+- 🐙 GitHub: [https://github.com/P1M0U/Agent-Memory-Lite](https://github.com/P1M0U/Agent-Memory-Lite)
+- 🐻 Gitee: [https://gitee.com/pimou/Agent-Memory-Lite](https://gitee.com/pimou/Agent-Memory-Lite)
