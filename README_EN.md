@@ -19,7 +19,7 @@ Lightweight, Chinese-friendly Agent memory system with local semantic search. Bu
 
 ### Agent Built-in Memory vs. Agent Memory Lite
 
-Agent frameworks (e.g., Hermes) ship with session-scoped memory — tools like `session_search` and `user_profile` handle **in-session context**. This project addresses a different layer:
+Agent frameworks (e.g., Claude Code) ship with session-scoped memory that handles **in-session context**. This project addresses a different layer:
 
 | Dimension | Agent Built-in Memory | Agent Memory Lite |
 |-----------|----------------------|-------------------|
@@ -33,30 +33,31 @@ Agent frameworks (e.g., Hermes) ship with session-scoped memory — tools like `
 
 ### Cross-Agent Memory Hub
 
-The unique value of this project is **framework-agnostic memory**. One `.db` file can be shared by any MCP-compatible Agent (Hermes, Claude Code, Cursor, etc.):
+The unique value of this project is **framework-agnostic memory**. One `.db` file can be shared by any MCP-compatible Agent or IDE (Claude Code, Claude Desktop, Cursor, Cline, etc.):
 
 ```
-┌─────────┐  ┌──────────┐  ┌──────────┐
-│ Hermes  │  │ Claude   │  │ Cursor   │  ... any MCP-compatible Agent
-└────┬────┘  └────┬─────┘  └────┬─────┘
-     │            │             │
-     └────────────┼─────────────┘
-                  │ MCP Protocol (stdio)
-           ┌──────┴──────┐
-           │ Agent Memory │
-           │     Lite     │
-           └──────┬──────┘
-                  │
-           ┌──────┴──────┐
-           │  memory.db  │  Standalone storage — backup, migrate, analyze
-           └─────────────┘
+┌──────────┐  ┌──────────┐  ┌──────────┐
+│ Claude   │  │ Cursor   │  │ Cline    │  ... any MCP-compatible Agent
+│  Code    │  │          │  │          │
+└────┬─────┘  └────┬─────┘  └────┬─────┘
+     │             │             │
+     └─────────────┼─────────────┘
+                   │ MCP Protocol (stdio)
+            ┌──────┴──────┐
+            │ Agent Memory │
+            │     Lite     │
+            └──────┬──────┘
+                   │
+            ┌──────┴──────┐
+            │  memory.db  │  Standalone storage — backup, migrate, analyze
+            └─────────────┘
 ```
 
 What this enables:
-- Memories stored via Hermes remain accessible when switching to Claude Code
-- User preferences learned by one Agent benefit another
-- Memory data survives framework upgrades — independent from any single tool
-- One memory store becomes a true "long-term knowledge base" across tools
+- Memories stored via Claude Code remain accessible when switching to Cursor
+- User preferences learned in one IDE benefit another
+- Memory data survives tool upgrades — independent from any single tool
+- One memory store becomes a true "cross-tool long-term knowledge base"
 
 ## Features
 
