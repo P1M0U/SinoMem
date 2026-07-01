@@ -11,7 +11,7 @@ English | [中文](README.md)
 ![sqlite-vec](https://img.shields.io/badge/sqlite--vec-Vector-purple)
 ![MCP](https://img.shields.io/badge/MCP-Server-green)
 ![uv](https://img.shields.io/badge/uv-Package--Mgr-orange)
-![License](https://img.shields.io/badge/License-MIT-yellow)
+![License](https://img.shields.io/badge/License-AGPLv3-blue)
 
 Lightweight, Chinese-friendly Agent memory system with local semantic search. Built on SQLite + FTS5 + ONNX embeddings — zero API calls.
 
@@ -128,18 +128,18 @@ Please install Agent Memory Lite for me. Steps:
 3. Verify the installation works
    uv run python -c "from agent_memory_lite.core.engine import MemoryEngine; print('ok')"
 
-4. Add MCP Server config to ~/.hermes/config.yaml under mcp_servers:
+4. Add MCP Server config to ~/.hermes/config.yaml under mcp_servers (replace with your actual home path):
    agent-memory-lite:
      args: []
-     command: /home/pimou/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh
+     command: ~/hermes/scripts/agent-memory-lite-mcp-wrapper.sh
 
-5. Create wrapper script ~/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh with content:
+5. Create wrapper script ~/hermes/scripts/agent-memory-lite-mcp-wrapper.sh with content:
    #!/bin/bash
    cd ~/Desktop/Agent-Memory-Lite
    exec uv run python -m agent_memory_lite.entrypoints.mcp_server
 
 6. Make the wrapper executable
-   chmod +x ~/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh
+   chmod +x ~/hermes/scripts/agent-memory-lite-mcp-wrapper.sh
 
 Tell me when done.
 ```
@@ -159,18 +159,18 @@ Please install Agent Memory Lite for me. Steps:
 3. Verify the installation works
    uv run python -c "from agent_memory_lite.core.engine import MemoryEngine; print('ok')"
 
-4. Add MCP Server config to ~/.hermes/config.yaml under mcp_servers:
+4. Add MCP Server config to ~/.hermes/config.yaml under mcp_servers (replace with your actual home path):
    agent-memory-lite:
      args: []
-     command: /home/pimou/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh
+     command: ~/hermes/scripts/agent-memory-lite-mcp-wrapper.sh
 
-5. Create wrapper script ~/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh with content:
+5. Create wrapper script ~/hermes/scripts/agent-memory-lite-mcp-wrapper.sh with content:
    #!/bin/bash
    cd ~/Desktop/Agent-Memory-Lite
    exec uv run python -m agent_memory_lite.entrypoints.mcp_server
 
 6. Make the wrapper executable
-   chmod +x ~/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh
+   chmod +x ~/hermes/scripts/agent-memory-lite-mcp-wrapper.sh
 
 Tell me when done.
 ```
@@ -198,18 +198,18 @@ Add to `~/.hermes/config.yaml` under `mcp_servers:`:
 ```yaml
   agent-memory-lite:
     args: []
-    command: /home/pimou/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh
+    command: ~/hermes/scripts/agent-memory-lite-mcp-wrapper.sh
 ```
 
 Create the wrapper script:
 
 ```bash
-cat > ~/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh << 'EOF'
+cat > ~/hermes/scripts/agent-memory-lite-mcp-wrapper.sh << 'EOF'
 #!/bin/bash
 cd ~/Desktop/Agent-Memory-Lite
 exec uv run python -m agent_memory_lite.entrypoints.mcp_server
 EOF
-chmod +x ~/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh
+chmod +x ~/hermes/scripts/agent-memory-lite-mcp-wrapper.sh
 ```
 
 Restart Hermes to activate.

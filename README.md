@@ -11,7 +11,7 @@
 ![sqlite-vec](https://img.shields.io/badge/sqlite--vec-向量搜索-purple)
 ![MCP](https://img.shields.io/badge/MCP-Server-green)
 ![uv](https://img.shields.io/badge/uv-包管理-orange)
-![License](https://img.shields.io/badge/License-MIT-yellow)
+![License](https://img.shields.io/badge/License-AGPLv3-blue)
 
 轻量级中文友好的 Agent 记忆增强系统。基于 SQLite + FTS5 + 本地 ONNX 向量搜索，零 API 调用。
 
@@ -128,18 +128,18 @@ models/embedding/              # ONNX 嵌入模型（需单独下载）
 3. 验证安装是否成功
    uv run python -c "from agent_memory_lite.core.engine import MemoryEngine; print('ok')"
 
-4. 把 MCP Server 配置写入 ~/.hermes/config.yaml 的 mcp_servers 段：
+4. 把 MCP Server 配置写入 ~/.hermes/config.yaml 的 mcp_servers 段（请将 /home/你的用户名/ 替换为实际路径）：
    agent-memory-lite:
      args: []
-     command: /home/pimou/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh
+     command: ~/hermes/scripts/agent-memory-lite-mcp-wrapper.sh
 
-5. 创建 wrapper 脚本 ~/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh，内容：
+5. 创建 wrapper 脚本 ~/hermes/scripts/agent-memory-lite-mcp-wrapper.sh，内容：
    #!/bin/bash
    cd ~/Desktop/Agent-Memory-Lite
    exec uv run python -m agent_memory_lite.entrypoints.mcp_server
 
 6. 给 wrapper 脚本加执行权限
-   chmod +x ~/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh
+   chmod +x ~/hermes/scripts/agent-memory-lite-mcp-wrapper.sh
 
 完成后告诉我安装结果。
 ```
@@ -159,18 +159,18 @@ models/embedding/              # ONNX 嵌入模型（需单独下载）
 3. 验证安装是否成功
    uv run python -c "from agent_memory_lite.core.engine import MemoryEngine; print('ok')"
 
-4. 把 MCP Server 配置写入 ~/.hermes/config.yaml 的 mcp_servers 段：
+4. 把 MCP Server 配置写入 ~/.hermes/config.yaml 的 mcp_servers 段（请将 /home/你的用户名/ 替换为实际路径）：
    agent-memory-lite:
      args: []
-     command: /home/pimou/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh
+     command: ~/hermes/scripts/agent-memory-lite-mcp-wrapper.sh
 
-5. 创建 wrapper 脚本 ~/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh，内容：
+5. 创建 wrapper 脚本 ~/hermes/scripts/agent-memory-lite-mcp-wrapper.sh，内容：
    #!/bin/bash
    cd ~/Desktop/Agent-Memory-Lite
    exec uv run python -m agent_memory_lite.entrypoints.mcp_server
 
 6. 给 wrapper 脚本加执行权限
-   chmod +x ~/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh
+   chmod +x ~/hermes/scripts/agent-memory-lite-mcp-wrapper.sh
 
 完成后告诉我安装结果。
 ```
@@ -217,18 +217,18 @@ HF_ENDPOINT=https://hf-mirror.com python -c "from huggingface_hub import hf_hub_
 ```yaml
   agent-memory-lite:
     args: []
-    command: /home/pimou/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh
+    command: ~/hermes/scripts/agent-memory-lite-mcp-wrapper.sh
 ```
 
 创建 wrapper 脚本：
 
 ```bash
-cat > ~/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh << 'EOF'
+cat > ~/hermes/scripts/agent-memory-lite-mcp-wrapper.sh << 'EOF'
 #!/bin/bash
 cd ~/Desktop/Agent-Memory-Lite
 exec uv run python -m agent_memory_lite.entrypoints.mcp_server
 EOF
-chmod +x ~/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh
+chmod +x ~/hermes/scripts/agent-memory-lite-mcp-wrapper.sh
 ```
 
 重启 Hermes 后生效。
