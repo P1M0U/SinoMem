@@ -1,6 +1,6 @@
 [project]
 name = "agent-memory-lite"
-version = "0.5.7"
+version = "0.5.8"
 description = "轻量级中文友好的 Agent 记忆增强系统"
 readme = "README.md"
 requires-python = ">=3.11"
