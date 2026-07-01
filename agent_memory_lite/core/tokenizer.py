@@ -11,8 +11,8 @@ if _DICT_PATH.exists():
 
 
 def tokenize(text: str) -> str:
-    """jieba 分词，返回空格分隔的词语"""
-    return " ".join(jieba.cut(text))
+    """jieba 细粒度分词，返回空格分隔的词语"""
+    return " ".join(jieba.cut_for_search(text))
 
 
 def tokenize_list(text: str) -> list[str]:
@@ -23,11 +23,23 @@ def tokenize_list(text: str) -> list[str]:
 def tokenize_for_fts5(query: str) -> str:
     """将多关键词查询转为 FTS5 AND 语法
 
-    默认 FTS5 将空格分隔解释为短语匹配，这里用 * 加回 AND：
-    "飞书 文件" → '"飞书" AND "文件"'
+    写入和查询都用 cut_for_search 确保 token 对齐，
+    过滤 ≤3 字的 token 避免 cut_for_search 产出的长子串
+    在存储侧不存在时导致的 false negative。
     """
-    words = [w for w in jieba.cut(query) if w.strip()]
+    # 去重保序：cut_for_search 会产生重复token
+    words = list(
+        dict.fromkeys(
+            [
+                w
+                for w in jieba.cut_for_search(query)
+                if w.strip() and len(w) <= 3
+            ]
+        )
+    )
+    if not words:
+        # 兜底：如果全部被过滤了，用原始 cut
+        words = [w for w in jieba.cut(query) if w.strip()]
     if len(words) <= 1:
         return " ".join(words)
-    # 每个词加双引号，用 AND 连接（FTS5 enhanced query syntax）
     return " AND ".join(f'"{w}"' for w in words)
