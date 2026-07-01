@@ -13,7 +13,7 @@ English | [中文](README.md)
 ![uv](https://img.shields.io/badge/uv-Package--Mgr-orange)
 ![License](https://img.shields.io/badge/License-AGPLv3-blue)
 
-Lightweight, Chinese-friendly Agent memory system with local semantic search. Built on SQLite + FTS5 + ONNX embeddings — zero API calls.
+Lightweight, Chinese-friendly Agent memory system with local semantic search. Built on SQLite + FTS5 + jieba tokenization + ONNX embeddings — zero API calls.
 
 ## Why This Exists
 
@@ -79,33 +79,12 @@ What this enables:
 
 ```
 agent_memory_lite/
-├── __init__.py               # Version
-├── core/                     # Core business logic
-│   ├── __init__.py
-│   ├── config.py             # Centralized config (paths, defaults)
-│   ├── engine.py             # Facade class MemoryEngine, composes store + search
-│   ├── store.py              # Memory CRUD + VACUUM + dedup + batch delete
-│   ├── search.py             # Three-mode search engine (SearchEngine)
-│   ├── embedder.py           # ONNX embedding model wrapper + batch inference (Embedder)
-│   ├── schema.py             # SQLite schema constants
-│   └── tokenizer.py          # jieba Chinese tokenizer
-├── entrypoints/              # Public entry points
-│   ├── __init__.py
-│   ├── cli.py                # CLI command-line tool
-│   └── mcp_server.py         # MCP Server entry point (FastMCP)
-└── tools/                    # Data migration tools
-    ├── __init__.py
-    ├── migrate.py            # Vector migration (generate embeddings for existing memories)
-    └── import_holographic.py # Import data from holographic memory
-tests/
-├── test_engine.py            # Engine integration tests
-├── test_store.py             # Storage layer unit tests
-├── test_search.py            # Search layer unit tests
-├── test_mcp_server.py        # MCP Server tests
-├── test_migrate.py           # Migration tests
-└── test_import_holographic.py  # Import tests
-dicts/                        # Custom jieba dictionaries
-models/embedding/              # ONNX embedding model (download separately)
+├── core/           # Core business logic (storage, search, tokenization, embeddings)
+├── entrypoints/    # Public entry points (CLI and MCP Server)
+└── tools/          # Data migration tools
+tests/              # Tests
+dicts/              # Custom jieba dictionaries
+models/embedding/   # ONNX embedding model (download separately)
 ```
 
 ---
@@ -129,17 +108,21 @@ Please install Agent Memory Lite for me. Steps:
 3. Verify the installation works
    uv run python -c "from agent_memory_lite.core.engine import MemoryEngine; print('ok')"
 
-4. Add MCP Server config to ~/.hermes/config.yaml under mcp_servers (replace /home/your-username with your actual home path):
+4. Ask the user whether to download the embedding model (paraphrase-multilingual-MiniLM-L12-v2, ~113MB)
+   — If yes, download the ONNX quantized model from hf-mirror.com to models/embedding/ for semantic search
+   — If no, skip this step; semantic search will gracefully degrade to keyword search without the model
+
+5. Add MCP Server config to ~/.hermes/config.yaml under mcp_servers (replace /home/your-username with your actual home path):
    agent-memory-lite:
      args: []
      command: /home/your-username/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh
 
-5. Create wrapper script ~/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh with content:
+6. Create wrapper script ~/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh with content:
    #!/bin/bash
    cd ~/Desktop/Agent-Memory-Lite
    exec uv run python -m agent_memory_lite.entrypoints.mcp_server
 
-6. Make the wrapper executable
+7. Make the wrapper executable
    chmod +x ~/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh
 
 Tell me when done.
@@ -160,17 +143,21 @@ Please install Agent Memory Lite for me. Steps:
 3. Verify the installation works
    uv run python -c "from agent_memory_lite.core.engine import MemoryEngine; print('ok')"
 
-4. Add MCP Server config to ~/.hermes/config.yaml under mcp_servers (replace /home/your-username with your actual home path):
+4. Ask the user whether to download the embedding model (paraphrase-multilingual-MiniLM-L12-v2, ~113MB)
+   — If yes, download the ONNX quantized model from hf-mirror.com to models/embedding/ for semantic search
+   — If no, skip this step; semantic search will gracefully degrade to keyword search without the model
+
+5. Add MCP Server config to ~/.hermes/config.yaml under mcp_servers (replace /home/your-username with your actual home path):
    agent-memory-lite:
      args: []
      command: /home/your-username/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh
 
-5. Create wrapper script ~/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh with content:
+6. Create wrapper script ~/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh with content:
    #!/bin/bash
    cd ~/Desktop/Agent-Memory-Lite
    exec uv run python -m agent_memory_lite.entrypoints.mcp_server
 
-6. Make the wrapper executable
+7. Make the wrapper executable
    chmod +x ~/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh
 
 Tell me when done.
@@ -313,19 +300,6 @@ After heavy deletions, SQLite does not automatically reclaim disk space. The `va
 | `semantic` | Vector semantic similarity | Fuzzy lookup, e.g. searching "how to send files" |
 | `hybrid` | Keyword + semantic weighted | General purpose, balances precision and recall |
 
-## Tech Stack
-
-```
-Language:      Python 3.11+
-Package Mgr:   uv
-MCP Protocol:  fastmcp 3.x
-Storage:       SQLite + FTS5
-CJK Tokenizer: jieba + custom dictionary
-Vector Search: sqlite-vec
-Embeddings:    ONNX quantized (paraphrase-multilingual-MiniLM-L12-v2)
-CLI:           click
-```
-
 ## License
 
 [AGPLv3](LICENSE)
@@ -336,6 +310,6 @@ Copyright © 2026 [P1M0U](https://github.com/P1M0U)
 
 ## Contact
 
-- 📧 Email: [p1m0u@foxmail.com](mailto:p1m0u@foxmail.com)
-- 🐙 GitHub: [https://github.com/P1M0U/Agent-Memory-Lite](https://github.com/P1M0U/Agent-Memory-Lite)
-- 🐻 Gitee: [https://gitee.com/pimou/Agent-Memory-Lite](https://gitee.com/pimou/Agent-Memory-Lite)
+- Email: [p1m0u@foxmail.com](mailto:p1m0u@foxmail.com)
+- GitHub: [https://github.com/P1M0U/Agent-Memory-Lite](https://github.com/P1M0U/Agent-Memory-Lite)
+- Gitee: [https://gitee.com/pimou/Agent-Memory-Lite](https://gitee.com/pimou/Agent-Memory-Lite)

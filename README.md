@@ -13,7 +13,7 @@
 ![uv](https://img.shields.io/badge/uv-包管理-orange)
 ![License](https://img.shields.io/badge/License-AGPLv3-blue)
 
-轻量级中文友好的 Agent 记忆增强系统。基于 SQLite + FTS5 + 本地 ONNX 向量搜索，零 API 调用。
+轻量级中文友好的 Agent 记忆增强系统。基于 SQLite + FTS5 + jieba 分词 + 本地 ONNX 向量搜索，零 API 调用。
 
 ## 设计初衷
 
@@ -79,33 +79,12 @@ Agent 框架（如 Claude Code）通常自带会话级记忆来处理**当前会
 
 ```
 agent_memory_lite/
-├── __init__.py               # 版本号
-├── core/                     # 核心业务逻辑
-│   ├── __init__.py
-│   ├── config.py             # 集中配置（路径、默认参数）
-│   ├── engine.py             # 门面类 MemoryEngine，组合 store + search
-│   ├── store.py              # 记忆 CRUD + VACUUM + 去重 + 批量删除
-│   ├── search.py             # 三模搜索引擎（SearchEngine）
-│   ├── embedder.py           # ONNX 嵌入模型封装 + batch 推理（Embedder）
-│   ├── schema.py             # SQLite schema 常量
-│   └── tokenizer.py          # jieba 中文分词
-├── entrypoints/              # 对外入口
-│   ├── __init__.py
-│   ├── cli.py                # CLI 命令行工具
-│   └── mcp_server.py         # MCP Server 入口（FastMCP）
-└── tools/                    # 数据迁移工具
-    ├── __init__.py
-    ├── migrate.py            # 向量迁移（为已有记忆生成嵌入）
-    └── import_holographic.py # 从 holographic memory 导入数据
-tests/
-├── test_engine.py            # 引擎集成测试
-├── test_store.py             # 存储层单元测试
-├── test_search.py            # 搜索层单元测试
-├── test_mcp_server.py        # MCP Server 测试
-├── test_migrate.py           # 迁移测试
-└── test_import_holographic.py  # 导入测试
-dicts/                        # 自定义 jieba 词典
-models/embedding/              # ONNX 嵌入模型（需单独下载）
+├── core/           # 核心业务逻辑（存储、搜索、分词、嵌入）
+├── entrypoints/    # 对外入口（CLI 和 MCP Server）
+└── tools/          # 数据迁移工具
+tests/              # 测试
+dicts/              # 自定义 jieba 词典
+models/embedding/   # ONNX 嵌入模型（需单独下载）
 ```
 
 ---
@@ -129,17 +108,21 @@ models/embedding/              # ONNX 嵌入模型（需单独下载）
 3. 验证安装是否成功
    uv run python -c "from agent_memory_lite.core.engine import MemoryEngine; print('ok')"
 
-4. 把 MCP Server 配置写入 ~/.hermes/config.yaml 的 mcp_servers 段（请将 /home/你的用户名 替换为实际路径）：
+4. 询问用户是否需要下载嵌入模型（paraphrase-multilingual-MiniLM-L12-v2，约 113MB）
+   — 如果用户选择下载，则从 hf-mirror.com 下载 ONNX 量化模型到 models/embedding/ 目录，用于语义搜索
+   — 如果用户选择不下载，跳过此步骤；不下载模型时不报错，语义搜索自动降级为关键词搜索
+
+5. 把 MCP Server 配置写入 ~/.hermes/config.yaml 的 mcp_servers 段（请将 /home/你的用户名 替换为实际路径）：
    agent-memory-lite:
      args: []
      command: /home/你的用户名/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh
 
-5. 创建 wrapper 脚本 ~/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh，内容：
+6. 创建 wrapper 脚本 ~/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh，内容：
    #!/bin/bash
    cd ~/Desktop/Agent-Memory-Lite
    exec uv run python -m agent_memory_lite.entrypoints.mcp_server
 
-6. 给 wrapper 脚本加执行权限
+7. 给 wrapper 脚本加执行权限
    chmod +x ~/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh
 
 完成后告诉我安装结果。
@@ -160,17 +143,21 @@ models/embedding/              # ONNX 嵌入模型（需单独下载）
 3. 验证安装是否成功
    uv run python -c "from agent_memory_lite.core.engine import MemoryEngine; print('ok')"
 
-4. 把 MCP Server 配置写入 ~/.hermes/config.yaml 的 mcp_servers 段（请将 /home/你的用户名 替换为实际路径）：
+4. 询问用户是否需要下载嵌入模型（paraphrase-multilingual-MiniLM-L12-v2，约 113MB）
+   — 如果用户选择下载，则从 hf-mirror.com 下载 ONNX 量化模型到 models/embedding/ 目录，用于语义搜索
+   — 如果用户选择不下载，跳过此步骤；不下载模型时不报错，语义搜索自动降级为关键词搜索
+
+5. 把 MCP Server 配置写入 ~/.hermes/config.yaml 的 mcp_servers 段（请将 /home/你的用户名 替换为实际路径）：
    agent-memory-lite:
      args: []
      command: /home/你的用户名/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh
 
-5. 创建 wrapper 脚本 ~/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh，内容：
+6. 创建 wrapper 脚本 ~/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh，内容：
    #!/bin/bash
    cd ~/Desktop/Agent-Memory-Lite
    exec uv run python -m agent_memory_lite.entrypoints.mcp_server
 
-6. 给 wrapper 脚本加执行权限
+7. 给 wrapper 脚本加执行权限
    chmod +x ~/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh
 
 完成后告诉我安装结果。
@@ -312,19 +299,6 @@ uv run python -m agent_memory_lite.entrypoints.cli vacuum
 | `semantic` | 向量语义相似度 | 模糊查找，如搜"怎么传文件" |
 | `hybrid` | 关键词 + 语义加权 | 通用场景，兼顾精确和模糊 |
 
-## 技术栈
-
-```
-语言：Python 3.11+
-包管理：uv
-MCP 协议：fastmcp 3.x
-存储：SQLite + FTS5
-中文分词：jieba + 自定义词典
-向量搜索：sqlite-vec
-嵌入模型：ONNX 量化版（paraphrase-multilingual-MiniLM-L12-v2）
-CLI：click
-```
-
 ## License
 
 [AGPLv3](LICENSE)
@@ -335,6 +309,6 @@ Copyright © 2026 [P1M0U](https://github.com/P1M0U)
 
 ## 联系作者
 
-- 📧 电子邮箱：[p1m0u@foxmail.com](mailto:p1m0u@foxmail.com)
-- 🐙 GitHub：[https://github.com/P1M0U/Agent-Memory-Lite](https://github.com/P1M0U/Agent-Memory-Lite)
-- 🐻 Gitee：[https://gitee.com/pimou/Agent-Memory-Lite](https://gitee.com/pimou/Agent-Memory-Lite)
+- 电子邮箱：[p1m0u@foxmail.com](mailto:p1m0u@foxmail.com)
+- GitHub：[https://github.com/P1M0U/Agent-Memory-Lite](https://github.com/P1M0U/Agent-Memory-Lite)
+- Gitee：[https://gitee.com/pimou/Agent-Memory-Lite](https://gitee.com/pimou/Agent-Memory-Lite)
