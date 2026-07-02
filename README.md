@@ -91,7 +91,9 @@ models/embedding/   # ONNX 嵌入模型（需单独下载）
 
 ## 一键安装（给智能体的提示词）
 
-复制以下内容发给你的 AI Agent，它会自动完成克隆、安装、配置：
+复制以下内容发给你的 AI Agent，它会自动完成克隆、安装、配置。
+
+> **💡 如果你使用的是 Hermes Agent**，推荐通过 **Memory Provider 插件方式**安装，可获得更好的集成体验（自动同步、进程内调用、工具去重）。详见 [Hermes Memory Provider 适配器安装指南](agent-memory-lite-hermes-adapter-guide.md)。
 
 ### 方式一：从 GitHub 安装
 

@@ -91,7 +91,9 @@ models/embedding/   # ONNX embedding model (download separately)
 
 ## One-Click Install (Prompt for AI Agent)
 
-Copy the prompt below and send it to your AI Agent — it will handle clone, install, and config automatically:
+Copy the prompt below and send it to your AI Agent — it will handle clone, install, and config automatically.
+
+> **💡 If you're using Hermes Agent**, we recommend installing via the **Memory Provider plugin** for a better integration experience (auto sync, in-process calls, tool deduplication). See [Hermes Memory Provider Adapter Guide](agent-memory-lite-hermes-adapter-guide.md).
 
 ### Option A: Install from GitHub
 
