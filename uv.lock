@@ -12,7 +12,7 @@ resolution-markers = [
 
 [[package]]
 name = "agent-memory-lite"
-version = "0.5.9"
+version = "0.6.0"
 source = { virtual = "." }
 dependencies = [
     { name = "click" },
