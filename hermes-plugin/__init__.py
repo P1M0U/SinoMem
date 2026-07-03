@@ -15,7 +15,8 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from tools.registry import tool_error  # noqa: F821
+from agent.memory_provider import MemoryProvider  # noqa: E402
+from tools.registry import tool_error  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # 路径配置
@@ -38,7 +39,7 @@ if (
 # ---------------------------------------------------------------------------
 
 
-class AgentMemoryLiteProvider(MemoryProvider):  # noqa: F821
+class AgentMemoryLiteProvider(MemoryProvider):
     """Hermes Memory Provider 适配器 — 包装 agent-memory-lite"""
 
     name = "agent-memory-lite"
@@ -301,4 +302,4 @@ class AgentMemoryLiteProvider(MemoryProvider):  # noqa: F821
 
 def register(ctx):
     """注册插件（Hermes 插件加载入口）"""
-    ctx.register_memory_provider(AgentMemoryLiteProvider)
+    ctx.register_memory_provider(AgentMemoryLiteProvider())

@@ -244,8 +244,8 @@ hf_hub_download('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', '
 # ─── Option B: bge-small-zh-v1.5 (Chinese-optimized, ~24MB) ───
 python -c "
 from huggingface_hub import hf_hub_download
-hf_hub_download('BAAI/bge-small-zh-v1.5', 'onnx/model_quantized.onnx', local_dir='models/embedding')
-hf_hub_download('BAAI/bge-small-zh-v1.5', 'tokenizer.json', local_dir='models/embedding')
+hf_hub_download('Xenova/bge-small-zh-v1.5', 'onnx/model_quantized.onnx', local_dir='models/embedding')
+hf_hub_download('Xenova/bge-small-zh-v1.5', 'tokenizer.json', local_dir='models/embedding')
 "
 ```
 
