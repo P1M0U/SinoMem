@@ -10,6 +10,7 @@ Agent-Memory-Lite × Hermes Memory Provider 适配器
 
 import importlib
 import logging
+import os
 import sys
 import threading
 from pathlib import Path
@@ -22,8 +23,10 @@ from tools.registry import tool_error  # noqa: E402
 # 路径配置
 # ---------------------------------------------------------------------------
 
-_USER_NAMESPACE = "_hermes_user_memory"
-_AGENT_MEMORY_LITE_DIR = Path.home() / "Desktop" / "Agent-Memory-Lite"
+# 支持 AML_HOME 环境变量覆盖，默认为 ~/Desktop/Agent-Memory-Lite
+_AGENT_MEMORY_LITE_DIR = Path(
+    os.environ.get("AML_HOME", Path.home() / "Desktop" / "Agent-Memory-Lite")
+)
 _AGENT_MEMORY_DB = Path.home() / ".agent-memory" / "memory.db"
 
 # 将 agent-memory-lite 添加到 sys.path（确保 import 成功）
@@ -53,18 +56,42 @@ class AgentMemoryLiteProvider(MemoryProvider):
         self._logger = logging.getLogger("hermes.memory.agent-memory-lite")
 
     def is_available(self) -> bool:
-        """检查 agent-memory-lite 是否可用"""
+        """检查 agent-memory-lite 是否可用
+
+        仅检查核心库是否可导入 + 项目目录是否存在。
+        数据库文件由 initialize() -> create_engine() 自动创建，无需预先存在。
+        """
         try:
             if importlib.util.find_spec("agent_memory_lite") is None:
+                self._logger.warning(
+                    "agent_memory_lite 未安装或不在 sys.path 中"
+                )
                 return False
-
-            if not _AGENT_MEMORY_DB.exists():
-                self._logger.warning(f"数据库不存在: {_AGENT_MEMORY_DB}")
+            if not _AGENT_MEMORY_LITE_DIR.is_dir():
+                self._logger.warning(
+                    f"项目目录不存在: {_AGENT_MEMORY_LITE_DIR}\n"
+                    "可通过环境变量 AML_HOME 指定路径"
+                )
                 return False
             return True
         except Exception as e:
             self._logger.warning(f"is_available 检查异常: {e}")
             return False
+
+    def get_config_schema(self) -> dict:
+        """返回 provider 配置项说明，供 hermes memory status 展示"""
+        return {
+            "aml_home": {
+                "type": "path",
+                "description": "Agent-Memory-Lite 项目目录路径",
+                "default": str(Path.home() / "Desktop" / "Agent-Memory-Lite"),
+            },
+            "db_path": {
+                "type": "path",
+                "description": "SQLite 数据库路径",
+                "default": str(_AGENT_MEMORY_DB),
+            },
+        }
 
     def initialize(self, session_id: str, **kwargs) -> None:
         """初始化 provider"""
@@ -219,6 +246,8 @@ class AgentMemoryLiteProvider(MemoryProvider):
 
     def system_prompt_block(self) -> str:
         """返回系统提示块"""
+        if self._engine is None:
+            return "# Agent Memory Lite\nInitializing..."
         try:
             stats = self._engine.stats()
             total = stats.get("total", 0)
@@ -280,9 +309,12 @@ class AgentMemoryLiteProvider(MemoryProvider):
         finally:
             threading.current_thread()._agent_memory_lite_writing = False
 
-    def sync_turn(self, session_id: str, messages: list) -> None:
-        """回合结束同步（非阻塞）"""
-        # agent-memory-lite 的同步已经在 on_memory_write 中处理
+    def sync_turn(self, *args, **kwargs) -> None:
+        """回合结束同步（非阻塞）
+
+        签名兼容基类 MemoryProvider.sync_turn 的不同版本，
+        使用 *args/**kwargs 避免参数名不匹配。
+        """
         pass
 
     def shutdown(self) -> None:

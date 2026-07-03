@@ -58,13 +58,28 @@ class Embedder:
         return self._model_type
 
     def _load(self):
-        """加载模型和分词器"""
-        # 加载 ONNX 模型（优先量化版）
+        """加载模型和分词器。
+
+        MiniLM 优先加载量化版 model_quint8_avx2.onnx（~113MB），
+        BGE 优先加载 model_quantized.onnx（~24MB），
+        都不存在则回退到 model.onnx（fp32，较大）。
+        """
         onnx_path = self.model_dir / "onnx"
-        model_file = onnx_path / "model_quantized.onnx"
-        if not model_file.exists():
-            model_file = onnx_path / "model.onnx"
-        if not model_file.exists():
+
+        # 按优先级依次尝试
+        candidates = [
+            onnx_path / "model_quint8_avx2.onnx",  # MiniLM 量化版 ~113MB
+            onnx_path
+            / "model_quantized.onnx",  # BGE 量化版 ~24MB / 通用量化版
+            onnx_path / "model.onnx",  # fp32 兜底
+        ]
+        model_file = None
+        for candidate in candidates:
+            if candidate.exists():
+                model_file = candidate
+                break
+
+        if model_file is None:
             raise FileNotFoundError(
                 f"ONNX 模型未找到: {onnx_path}\n"
                 "请下载模型到 {onnx_path}/ 目录"
