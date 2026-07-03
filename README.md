@@ -84,7 +84,7 @@ agent_memory_lite/
 └── tools/          # 数据迁移工具
 tests/              # 测试
 dicts/              # 自定义 jieba 词典
-hermes-plugin/      # Hermes Memory Provider 适配器插件
+hermes_plugin/      # Hermes Memory Provider 适配器插件
 models/embedding/   # ONNX 嵌入模型（需单独下载）
 ```
 
@@ -118,7 +118,7 @@ models/embedding/   # ONNX 嵌入模型（需单独下载）
    — 如果用户选择不下载，跳过此步骤；不下载模型时语义搜索自动降级为关键词搜索
 
 5. 询问用户选择安装方式：
-   — **Hermes Memory Provider 插件方式（推荐）**：执行 `cp -r ~/Desktop/Agent-Memory-Lite/hermes-plugin/ ~/.hermes/plugins/agent-memory-lite/`，然后按 [适配器安装指南](agent-memory-lite-hermes-adapter-guide.md) 完成剩余步骤
+   — **Hermes Memory Provider 插件方式（推荐）**：执行 `cp -r ~/Desktop/Agent-Memory-Lite/hermes_plugin/ ~/.hermes/plugins/agent-memory-lite/`，然后按 [适配器安装指南](agent-memory-lite-hermes-adapter-guide.md) 完成剩余步骤
    — **MCP Server 方式**：继续执行以下步骤 6-8
 
 6. 把 MCP Server 配置写入 ~/.hermes/config.yaml 的 mcp_servers 段（请将 /home/你的用户名 替换为实际路径）：
@@ -159,7 +159,7 @@ models/embedding/   # ONNX 嵌入模型（需单独下载）
    — 如果用户选择不下载，跳过此步骤；不下载模型时语义搜索自动降级为关键词搜索
 
 5. 询问用户选择安装方式：
-   — **Hermes Memory Provider 插件方式（推荐）**：执行 `cp -r ~/Desktop/Agent-Memory-Lite/hermes-plugin/ ~/.hermes/plugins/agent-memory-lite/`，然后按 [适配器安装指南](agent-memory-lite-hermes-adapter-guide.md) 完成剩余步骤
+   — **Hermes Memory Provider 插件方式（推荐）**：执行 `cp -r ~/Desktop/Agent-Memory-Lite/hermes_plugin/ ~/.hermes/plugins/agent-memory-lite/`，然后按 [适配器安装指南](agent-memory-lite-hermes-adapter-guide.md) 完成剩余步骤
    — **MCP Server 方式**：继续执行以下步骤 6-8
 
 6. 把 MCP Server 配置写入 ~/.hermes/config.yaml 的 mcp_servers 段（请将 /home/你的用户名 替换为实际路径）：

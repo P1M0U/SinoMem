@@ -84,7 +84,7 @@ agent_memory_lite/
 └── tools/          # Data migration tools
 tests/              # Tests
 dicts/              # Custom jieba dictionaries
-hermes-plugin/      # Hermes Memory Provider adapter plugin
+hermes_plugin/      # Hermes Memory Provider adapter plugin
 models/embedding/   # ONNX embedding model (download separately)
 ```
 
@@ -118,7 +118,7 @@ Please install Agent Memory Lite for me. Steps:
    — If the user chooses not to download, skip this step; semantic search degrades gracefully to keyword search
 
 5. Ask the user to choose an install method:
-   — **Hermes Memory Provider plugin (recommended)**: Run `cp -r ~/Desktop/Agent-Memory-Lite/hermes-plugin/ ~/.hermes/plugins/agent-memory-lite/`, then follow the [Adapter Guide](agent-memory-lite-hermes-adapter-guide.md) for the remaining steps
+   — **Hermes Memory Provider plugin (recommended)**: Run `cp -r ~/Desktop/Agent-Memory-Lite/hermes_plugin/ ~/.hermes/plugins/agent-memory-lite/`, then follow the [Adapter Guide](agent-memory-lite-hermes-adapter-guide.md) for the remaining steps
    — **MCP Server**: Continue with steps 6–8 below
 
 6. Add MCP Server config to ~/.hermes/config.yaml under mcp_servers (replace /home/your-username with your actual home path):
@@ -159,7 +159,7 @@ Please install Agent Memory Lite for me. Steps:
    — If the user chooses not to download, skip this step; semantic search degrades gracefully to keyword search
 
 5. Ask the user to choose an install method:
-   — **Hermes Memory Provider plugin (recommended)**: Run `cp -r ~/Desktop/Agent-Memory-Lite/hermes-plugin/ ~/.hermes/plugins/agent-memory-lite/`, then follow the [Adapter Guide](agent-memory-lite-hermes-adapter-guide.md) for the remaining steps
+   — **Hermes Memory Provider plugin (recommended)**: Run `cp -r ~/Desktop/Agent-Memory-Lite/hermes_plugin/ ~/.hermes/plugins/agent-memory-lite/`, then follow the [Adapter Guide](agent-memory-lite-hermes-adapter-guide.md) for the remaining steps
    — **MCP Server**: Continue with steps 6–8 below
 
 6. Add MCP Server config to ~/.hermes/config.yaml under mcp_servers (replace /home/your-username with your actual home path):

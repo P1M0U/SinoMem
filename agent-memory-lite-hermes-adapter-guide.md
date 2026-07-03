@@ -47,10 +47,10 @@ uv pip install --python ~/.hermes/hermes-agent/venv/bin/python jieba tokenizers
 
 ### 步骤 2：复制适配器插件
 
-适配器代码已内置在 Agent-Memory-Lite 项目的 `hermes-plugin/` 目录中，直接复制即可：
+适配器代码已内置在 Agent-Memory-Lite 项目的 `hermes_plugin/` 目录中，直接复制即可：
 
 ```bash
-cp -r ~/Desktop/Agent-Memory-Lite/hermes-plugin/ ~/.hermes/plugins/agent-memory-lite/
+cp -r ~/Desktop/Agent-Memory-Lite/hermes_plugin/ ~/.hermes/plugins/agent-memory-lite/
 ```
 
 ---
@@ -237,13 +237,13 @@ Agent-Memory-Lite 默认已配置 WAL。
 ├── config.yaml                          # 修改：memory.provider: agent-memory-lite
 ├── plugins/
 │   └── agent-memory-lite/
-│       ├── plugin.yaml                  # 插件元数据（从 hermes-plugin/ 复制）
-│       └── __init__.py                  # 适配器代码（从 hermes-plugin/ 复制）
+│       ├── plugin.yaml                  # 插件元数据（从 hermes_plugin/ 复制）
+│       └── __init__.py                  # 适配器代码（从 hermes_plugin/ 复制）
 └── ...
 
 ~/Desktop/Agent-Memory-Lite/
 ├── agent_memory_lite/                   # 核心库
-├── hermes-plugin/                       # 适配器插件源码
+├── hermes_plugin/                       # 适配器插件源码
 │   ├── plugin.yaml
 │   └── __init__.py
 ├── models/embedding/                    # ONNX 嵌入模型（113MB，可选）
@@ -315,7 +315,7 @@ MemoryEngine.store()（镜像写入）
 - **2026-07-02**：完成适配器开发和测试
 - **2026-07-02**：修复依赖缺失问题（jieba/tokenizers 未安装到 venv）
 - **2026-07-02**：验证自动同步功能正常工作
-- **2026-07-02**：适配器代码从文档内嵌改为项目 `hermes-plugin/` 目录统一管理，安装简化为 `cp -r`
+- **2026-07-02**：适配器代码从文档内嵌改为项目 `hermes_plugin/` 目录统一管理，安装简化为 `cp -r`
 
 ---
 

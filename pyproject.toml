@@ -55,7 +55,7 @@ exclude = [
     "dist",
     "__pycache__",
     ".git",
-    "hermes-plugin",
+    "hermes_plugin",
 ]
 
 [tool.ruff.format]
