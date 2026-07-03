@@ -123,6 +123,10 @@ class MemoryEngine:
         """获取已有向量的记忆 ID 集合"""
         return self._store.get_vector_ids()
 
+    def get_vec_dim(self) -> int | None:
+        """获取现有向量表的维度（从 sqlite_master 读取 CREATE TABLE 语句解析）"""
+        return self._store.get_vec_dim()
+
     def add_vector(self, memory_id: int, embedding_bytes: bytes) -> None:
         """为已有记忆添加向量"""
         self._store.add_vector(memory_id, embedding_bytes)

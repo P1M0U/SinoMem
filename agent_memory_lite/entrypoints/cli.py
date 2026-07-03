@@ -156,13 +156,22 @@ def vacuum(ctx):
 @click.option("--db", "db_path", default=None, help="数据库路径")
 @click.option("--model-dir", default=None, help="嵌入模型目录")
 @click.option("--batch-size", default=50, help="批量大小")
-def migrate(db_path, model_dir, batch_size):
+@click.option(
+    "--force",
+    is_flag=True,
+    help="强制重建所有向量（模型切换后使用）",
+)
+def migrate(db_path, model_dir, batch_size, force):
     """为已有记忆生成向量嵌入"""
     from ..tools.migrate import migrate_memories
 
-    result = migrate_memories(db_path, model_dir, batch_size)
+    result = migrate_memories(db_path, model_dir, batch_size, force)
+    extra = ""
+    if result.get("dim_changed"):
+        extra = " (dim changed)"
     click.echo(
         f"done: {result['migrated']} migrated, {result['skipped']} skipped"
+        f"{extra}"
     )
 
 

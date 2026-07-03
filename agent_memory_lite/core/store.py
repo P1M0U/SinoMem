@@ -271,6 +271,39 @@ class MemoryStore:
         rows = self.conn.execute("SELECT id FROM memories_vec").fetchall()
         return {r["id"] for r in rows}
 
+    def get_vec_dim(self) -> int | None:
+        """获取现有向量表的维度（从 sqlite_master 解析 CREATE TABLE）
+
+        vec0 虚拟表的 CREATE TABLE 语句如：
+        CREATE VIRTUAL TABLE memories_vec USING vec0(
+            id INTEGER PRIMARY KEY,
+            embedding float[512]
+        )
+        """
+        import re
+
+        if not self._has_vec():
+            return None
+        row = self.conn.execute(
+            "SELECT sql FROM sqlite_master "
+            "WHERE type='table' AND name='memories_vec'"
+        ).fetchone()
+        if not row:
+            return None
+        m = re.search(r"float\[(\d+)\]", row["sql"])
+        return int(m.group(1)) if m else None
+
+    def clear_vectors(self) -> int:
+        """清空所有向量（用于强制重建）"""
+        if not self._has_vec():
+            return 0
+        count = self.conn.execute(
+            "SELECT COUNT(*) FROM memories_vec"
+        ).fetchone()[0]
+        self.conn.execute("DELETE FROM memories_vec")
+        self.conn.commit()
+        return count
+
     def add_vector(self, memory_id: int, embedding_bytes: bytes) -> None:
         """为已有记忆添加向量"""
         if not self._has_vec():
