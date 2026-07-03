@@ -78,20 +78,22 @@ class AgentMemoryLiteProvider(MemoryProvider):
             self._logger.warning(f"is_available 检查异常: {e}")
             return False
 
-    def get_config_schema(self) -> dict:
+    def get_config_schema(self) -> list[dict]:
         """返回 provider 配置项说明，供 hermes memory status 展示"""
-        return {
-            "aml_home": {
+        return [
+            {
+                "key": "aml_home",
                 "type": "path",
                 "description": "Agent-Memory-Lite 项目目录路径",
                 "default": str(Path.home() / "Desktop" / "Agent-Memory-Lite"),
             },
-            "db_path": {
+            {
+                "key": "db_path",
                 "type": "path",
                 "description": "SQLite 数据库路径",
                 "default": str(_AGENT_MEMORY_DB),
             },
-        }
+        ]
 
     def initialize(self, session_id: str, **kwargs) -> None:
         """初始化 provider"""

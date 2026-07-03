@@ -16,19 +16,25 @@ from tokenizers import Tokenizer
 from .config import DEFAULT_MODEL_DIR
 
 
+def _count_session_inputs(session: ort.InferenceSession) -> int:
+    """返回 ONNX 模型输入张量数量"""
+    return len(session.get_inputs())
+
+
 def _detect_model_type(session: ort.InferenceSession) -> str:
-    """根据 ONNX 模型签名自动检测模型类型
+    """根据 ONNX 模型输出维度自动检测模型类型
 
     检测规则：
-    - 2 输入 + 512 维 → "bge"
-    - 3 输入 + 384 维 → "minilm"
+    - 512 维 → "bge"（BGE-small 系列）
+    - 384 维 → "minilm"（MiniLM 系列）
     - 其他 → "minilm"（兜底）
+
+    注意：不按输入数量判断，因为 Xenova 转出来的 BGE 也有 3 个输入。
     """
-    input_names = [i.name for i in session.get_inputs()]
     output_dim = session.get_outputs()[0].shape[-1]
     output_dim = output_dim if isinstance(output_dim, int) else 0
 
-    if len(input_names) == 2 and output_dim == 512:
+    if output_dim == 512:
         return "bge"
     return "minilm"
 
@@ -104,12 +110,12 @@ class Embedder:
             self._dim = 384  # 兜底
 
     def _build_inputs(self, ids: list[int], mask: list[int]) -> dict:
-        """根据模型类型构造 ONNX 推理输入 dict"""
+        """根据 ONNX 模型实际输入签名构造推理输入 dict"""
         inputs = {
             "input_ids": np.array([ids], dtype=np.int64),
             "attention_mask": np.array([mask], dtype=np.int64),
         }
-        if self._model_type == "minilm":
+        if _count_session_inputs(self._session) == 3:
             inputs["token_type_ids"] = np.array(
                 [[0] * len(ids)], dtype=np.int64
             )
@@ -123,7 +129,7 @@ class Embedder:
             "input_ids": np.array(batch_ids, dtype=np.int64),
             "attention_mask": np.array(batch_mask, dtype=np.int64),
         }
-        if self._model_type == "minilm":
+        if _count_session_inputs(self._session) == 3:
             inputs["token_type_ids"] = np.zeros(
                 (len(batch_ids), len(batch_ids[0])), dtype=np.int64
             )
