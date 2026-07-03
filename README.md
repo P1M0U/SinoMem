@@ -111,17 +111,17 @@ models/embedding/   # ONNX 嵌入模型（需单独下载）
 3. 验证安装是否成功
    uv run python -c "from agent_memory_lite.core.engine import MemoryEngine; print('ok')"
 
-4. 询问用户是否需要下载嵌入模型（用于语义搜索），二选一：
-   — **paraphrase-multilingual-MiniLM-L12-v2**（~113MB，384 维，50+ 语言，适合多语言混用）
-   — **bge-small-zh-v1.5**（~24MB，512 维，中文优化，适合纯中文场景，体积更小）
-   — 下载命令见项目 README 的"下载嵌入模型"部分，用 hf-mirror.com 镜像加速
-   — 如果用户选择不下载，跳过此步骤；不下载模型时语义搜索自动降级为关键词搜索
+4. 询问用户是否需要下载嵌入模型（用于语义搜索），给出以下选项让用户选择：
+   — A. 不下载（默认）— 跳过此步，语义搜索自动降级为关键词搜索
+   — B. paraphrase-multilingual-MiniLM-L12-v2（~113MB，384 维，50+ 语言，适合多语言混用）
+   — C. bge-small-zh-v1.5（~24MB，512 维，中文优化，适合纯中文场景，体积更小）
+   如果用户选择 B 或 C，从 hf-mirror.com 镜像下载对应模型到 models/embedding/ 目录
 
-5. 询问用户选择安装方式：
-   — **Hermes Memory Provider 插件方式（推荐）**：执行 `cp -r ~/Desktop/Agent-Memory-Lite/hermes_plugin/ ~/.hermes/plugins/agent-memory-lite/`，然后按 [适配器安装指南](agent-memory-lite-hermes-adapter-guide.md) 完成剩余步骤
-   — **MCP Server 方式**：继续执行以下步骤 6-8
+5. 询问用户选择安装方式，给出以下选项：
+   — A. Hermes Memory Provider 插件方式（推荐）— 执行 `cp -r ~/Desktop/Agent-Memory-Lite/hermes_plugin/ ~/.hermes/plugins/agent-memory-lite/`，然后按 [适配器安装指南](agent-memory-lite-hermes-adapter-guide.md) 完成剩余步骤（步骤 6-8 不需要执行）
+   — B. MCP Server 方式 — 继续执行以下步骤 6-8
 
-6. 把 MCP Server 配置写入 ~/.hermes/config.yaml 的 mcp_servers 段（请将 /home/你的用户名 替换为实际路径）：
+6. （仅当用户选择 MCP Server 方式时）把 MCP Server 配置写入 ~/.hermes/config.yaml 的 mcp_servers 段（请将 /home/你的用户名 替换为实际路径）：
    agent-memory-lite:
      args: []
      command: /home/你的用户名/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh
@@ -152,17 +152,17 @@ models/embedding/   # ONNX 嵌入模型（需单独下载）
 3. 验证安装是否成功
    uv run python -c "from agent_memory_lite.core.engine import MemoryEngine; print('ok')"
 
-4. 询问用户是否需要下载嵌入模型（用于语义搜索），二选一：
-   — **paraphrase-multilingual-MiniLM-L12-v2**（~113MB，384 维，50+ 语言，适合多语言混用）
-   — **bge-small-zh-v1.5**（~24MB，512 维，中文优化，适合纯中文场景，体积更小）
-   — 下载命令见项目 README 的"下载嵌入模型"部分，用 hf-mirror.com 镜像加速
-   — 如果用户选择不下载，跳过此步骤；不下载模型时语义搜索自动降级为关键词搜索
+4. 询问用户是否需要下载嵌入模型（用于语义搜索），给出以下选项让用户选择：
+   — A. 不下载（默认）— 跳过此步，语义搜索自动降级为关键词搜索
+   — B. paraphrase-multilingual-MiniLM-L12-v2（~113MB，384 维，50+ 语言，适合多语言混用）
+   — C. bge-small-zh-v1.5（~24MB，512 维，中文优化，适合纯中文场景，体积更小）
+   如果用户选择 B 或 C，从 hf-mirror.com 镜像下载对应模型到 models/embedding/ 目录
 
-5. 询问用户选择安装方式：
-   — **Hermes Memory Provider 插件方式（推荐）**：执行 `cp -r ~/Desktop/Agent-Memory-Lite/hermes_plugin/ ~/.hermes/plugins/agent-memory-lite/`，然后按 [适配器安装指南](agent-memory-lite-hermes-adapter-guide.md) 完成剩余步骤
-   — **MCP Server 方式**：继续执行以下步骤 6-8
+5. 询问用户选择安装方式，给出以下选项：
+   — A. Hermes Memory Provider 插件方式（推荐）— 执行 `cp -r ~/Desktop/Agent-Memory-Lite/hermes_plugin/ ~/.hermes/plugins/agent-memory-lite/`，然后按 [适配器安装指南](agent-memory-lite-hermes-adapter-guide.md) 完成剩余步骤（步骤 6-8 不需要执行）
+   — B. MCP Server 方式 — 继续执行以下步骤 6-8
 
-6. 把 MCP Server 配置写入 ~/.hermes/config.yaml 的 mcp_servers 段（请将 /home/你的用户名 替换为实际路径）：
+6. （仅当用户选择 MCP Server 方式时）把 MCP Server 配置写入 ~/.hermes/config.yaml 的 mcp_servers 段（请将 /home/你的用户名 替换为实际路径）：
    agent-memory-lite:
      args: []
      command: /home/你的用户名/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh

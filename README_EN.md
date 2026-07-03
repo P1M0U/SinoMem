@@ -111,17 +111,17 @@ Please install Agent Memory Lite for me. Steps:
 3. Verify the installation works
    uv run python -c "from agent_memory_lite.core.engine import MemoryEngine; print('ok')"
 
-4. Ask the user whether to download an embedding model (for semantic search), choose one:
-   — **paraphrase-multilingual-MiniLM-L12-v2** (~113MB, 384-dim, 50+ languages, best for mixed-language content)
-   — **bge-small-zh-v1.5** (~24MB, 512-dim, Chinese-optimized, best for primarily Chinese, much smaller)
-   — See the "Download Embedding Model" section in the project README for download commands (use hf-mirror.com mirror for speed in China)
-   — If the user chooses not to download, skip this step; semantic search degrades gracefully to keyword search
+4. Ask the user whether to download an embedding model (for semantic search), present these options:
+   — A. Skip (default) — semantic search degrades gracefully to keyword search
+   — B. paraphrase-multilingual-MiniLM-L12-v2 (~113MB, 384-dim, 50+ languages, best for mixed-language content)
+   — C. bge-small-zh-v1.5 (~24MB, 512-dim, Chinese-optimized, best for primarily Chinese, much smaller)
+   If user picks B or C, download the corresponding model from hf-mirror.com mirror to models/embedding/
 
-5. Ask the user to choose an install method:
-   — **Hermes Memory Provider plugin (recommended)**: Run `cp -r ~/Desktop/Agent-Memory-Lite/hermes_plugin/ ~/.hermes/plugins/agent-memory-lite/`, then follow the [Adapter Guide](agent-memory-lite-hermes-adapter-guide.md) for the remaining steps
-   — **MCP Server**: Continue with steps 6–8 below
+5. Ask the user to choose an install method, present these options:
+   — A. Hermes Memory Provider plugin (recommended) — Run `cp -r ~/Desktop/Agent-Memory-Lite/hermes_plugin/ ~/.hermes/plugins/agent-memory-lite/`, then follow the [Adapter Guide](agent-memory-lite-hermes-adapter-guide.md) for the remaining steps (skip steps 6–8)
+   — B. MCP Server — Continue with steps 6–8 below
 
-6. Add MCP Server config to ~/.hermes/config.yaml under mcp_servers (replace /home/your-username with your actual home path):
+6. (Only if user chose MCP Server) Add MCP Server config to ~/.hermes/config.yaml under mcp_servers (replace /home/your-username with your actual home path):
    agent-memory-lite:
      args: []
      command: /home/your-username/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh
@@ -152,17 +152,17 @@ Please install Agent Memory Lite for me. Steps:
 3. Verify the installation works
    uv run python -c "from agent_memory_lite.core.engine import MemoryEngine; print('ok')"
 
-4. Ask the user whether to download an embedding model (for semantic search), choose one:
-   — **paraphrase-multilingual-MiniLM-L12-v2** (~113MB, 384-dim, 50+ languages, best for mixed-language content)
-   — **bge-small-zh-v1.5** (~24MB, 512-dim, Chinese-optimized, best for primarily Chinese, much smaller)
-   — See the "Download Embedding Model" section in the project README for download commands (use hf-mirror.com mirror for speed in China)
-   — If the user chooses not to download, skip this step; semantic search degrades gracefully to keyword search
+4. Ask the user whether to download an embedding model (for semantic search), present these options:
+   — A. Skip (default) — semantic search degrades gracefully to keyword search
+   — B. paraphrase-multilingual-MiniLM-L12-v2 (~113MB, 384-dim, 50+ languages, best for mixed-language content)
+   — C. bge-small-zh-v1.5 (~24MB, 512-dim, Chinese-optimized, best for primarily Chinese, much smaller)
+   If user picks B or C, download the corresponding model from hf-mirror.com mirror to models/embedding/
 
-5. Ask the user to choose an install method:
-   — **Hermes Memory Provider plugin (recommended)**: Run `cp -r ~/Desktop/Agent-Memory-Lite/hermes_plugin/ ~/.hermes/plugins/agent-memory-lite/`, then follow the [Adapter Guide](agent-memory-lite-hermes-adapter-guide.md) for the remaining steps
-   — **MCP Server**: Continue with steps 6–8 below
+5. Ask the user to choose an install method, present these options:
+   — A. Hermes Memory Provider plugin (recommended) — Run `cp -r ~/Desktop/Agent-Memory-Lite/hermes_plugin/ ~/.hermes/plugins/agent-memory-lite/`, then follow the [Adapter Guide](agent-memory-lite-hermes-adapter-guide.md) for the remaining steps (skip steps 6–8)
+   — B. MCP Server — Continue with steps 6–8 below
 
-6. Add MCP Server config to ~/.hermes/config.yaml under mcp_servers (replace /home/your-username with your actual home path):
+6. (Only if user chose MCP Server) Add MCP Server config to ~/.hermes/config.yaml under mcp_servers (replace /home/your-username with your actual home path):
    agent-memory-lite:
      args: []
      command: /home/your-username/.hermes/scripts/agent-memory-lite-mcp-wrapper.sh
