@@ -19,7 +19,7 @@ English | [中文](README.md)
 > Give your AI Agent a long-term memory that never forgets.
 > One command to connect, zero API cost, 100% local storage.
 
-Lightweight, Chinese-friendly Agent memory system with local semantic search. Built on SQLite + FTS5 + jieba tokenization + ONNX embeddings — zero API calls.
+Lightweight, Chinese-friendly Agent memory system with local semantic search — SQLite + FTS5 + jieba tokenization + ONNX embeddings, zero API calls. Connects to Claude Code, Cursor, Cline, Hermes, and any MCP-compatible Agent.
 
 ## Quick Start (30 seconds)
 

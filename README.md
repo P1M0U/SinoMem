@@ -19,7 +19,7 @@
 > 让你的 AI Agent 拥有永不遗忘的长期记忆。
 > 一行命令接入，零 API 费用，数据 100% 本地存储。
 
-轻量级中文友好的 Agent 记忆增强系统。基于 SQLite + FTS5 + jieba 分词 + 本地 ONNX 向量搜索，零 API 调用。
+轻量级中文友好的 Agent 记忆增强系统，支持 SQLite + FTS5 + jieba 分词 + 本地 ONNX 向量搜索，零 API 调用。可通过 MCP 协议接入 Claude Code、Cursor、Cline、Hermes 等任意 Agent。
 
 ## 快速体验（30 秒上手）
 
