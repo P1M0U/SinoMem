@@ -12,7 +12,6 @@ English | [中文](README.md)
 ![MCP](https://img.shields.io/badge/MCP-Server-green)
 ![uv](https://img.shields.io/badge/uv-Package--Mgr-orange)
 ![License](https://img.shields.io/badge/License-AGPLv3-blue)
-![Stars](https://img.shields.io/github/stars/P1M0U/Agent-Memory-Lite?style=social)
 
 > Give your AI Agent a long-term memory that never forgets.
 > One command to connect, zero API cost, 100% local storage.

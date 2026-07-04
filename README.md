@@ -12,7 +12,6 @@
 ![MCP](https://img.shields.io/badge/MCP-Server-green)
 ![uv](https://img.shields.io/badge/uv-包管理-orange)
 ![License](https://img.shields.io/badge/License-AGPLv3-blue)
-![Stars](https://img.shields.io/github/stars/P1M0U/Agent-Memory-Lite?style=social)
 
 > 让你的 AI Agent 拥有永不遗忘的长期记忆。
 > 一行命令接入，零 API 费用，数据 100% 本地存储。
