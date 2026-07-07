@@ -1,0 +1,1 @@
+- [setuptools-scm 版本管理用法](setuptools-scm-usage.md) — 如何用 git tag 发版，无需手动改版本号
