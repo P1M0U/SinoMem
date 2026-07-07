@@ -1,4 +1,4 @@
-"""CLI 命令行工具"""
+"""CLI 命令行工具（TTL 过期 + 重要性评分）"""
 
 import json
 
@@ -25,15 +25,31 @@ def main(ctx, db_path, no_embed):
 @click.option("-c", "--category", default="general", help="分类")
 @click.option("-t", "--tags", default="", help="标签（逗号分隔）")
 @click.option("--allow-duplicate", is_flag=True, help="允许重复存储相同内容")
+@click.option(
+    "--ttl",
+    default=None,
+    help="过期时间，如 30d / 24h / 7d12h（None=永不过期）",
+)
+@click.option(
+    "--importance",
+    default=0.5,
+    type=float,
+    help="重要性评分 0.0~1.0（默认 0.5）",
+)
 @click.pass_context
-def store(ctx, content, category, tags, allow_duplicate):
+def store(ctx, content, category, tags, allow_duplicate, ttl, importance):
     """存储一条记忆"""
     tag_list = (
         [t.strip() for t in tags.split(",") if t.strip()] if tags else []
     )
     engine = ctx.obj["engine"]
     memory_id = engine.store(
-        content, category, tag_list, skip_duplicate=not allow_duplicate
+        content,
+        category,
+        tag_list,
+        skip_duplicate=not allow_duplicate,
+        ttl=ttl,
+        importance=importance,
     )
     click.echo(f"ok  id={memory_id}")
 
@@ -45,7 +61,7 @@ def store(ctx, content, category, tags, allow_duplicate):
     "--mode",
     default="keyword",
     type=click.Choice(["keyword", "semantic", "hybrid"]),
-    help="搜索模式",
+    help="搜索模式（keyword: BM25, hybrid: RRF融合）",
 )
 @click.option("-l", "--limit", default=5, help="返回条数")
 @click.pass_context
@@ -82,15 +98,22 @@ def get(ctx, memory_id):
 @click.option("--content", default=None, help="新内容")
 @click.option("-c", "--category", default=None, help="新分类")
 @click.option("-t", "--tags", default=None, help="新标签（逗号分隔）")
+@click.option("--importance", default=None, type=float, help="重要性 0.0~1.0")
+@click.option("--ttl", default=None, help="过期时间（30d/24h/7d12h）")
 @click.pass_context
-def update(ctx, memory_id, content, category, tags):
+def update(ctx, memory_id, content, category, tags, importance, ttl):
     """更新记忆"""
     tag_list = (
         [t.strip() for t in tags.split(",") if t.strip()] if tags else None
     )
     engine = ctx.obj["engine"]
     ok = engine.update(
-        memory_id, content=content, category=category, tags=tag_list
+        memory_id,
+        content=content,
+        category=category,
+        tags=tag_list,
+        importance=importance,
+        ttl=ttl,
     )
     click.echo("ok" if ok else "not found")
 
@@ -110,7 +133,7 @@ def delete(ctx, memory_id):
 @click.option("-l", "--limit", default=20, help="返回条数")
 @click.pass_context
 def list_memories(ctx, category, limit):
-    """列出记忆"""
+    """列出记忆（排除过期）"""
     engine = ctx.obj["engine"]
     results = engine.list_memories(category=category, limit=limit)
     if not results:
@@ -118,7 +141,14 @@ def list_memories(ctx, category, limit):
         return
     for r in results:
         tags_str = f"  [{', '.join(r['tags'])}]" if r.get("tags") else ""
-        click.echo(f"#{r['id']}  {r['category']}{tags_str}  {r['created_at']}")
+        imp_str = f"  imp={r.get('importance', 0.5):.1f}"
+        expire_str = ""
+        if r.get("expires_at"):
+            expire_str = f"  expires={r['expires_at'][:10]}"
+        click.echo(
+            f"#{r['id']}  {r['category']}{tags_str}{imp_str}{expire_str}"
+            f"  {r['created_at']}"
+        )
         click.echo(f"  {r['content'][:80]}")
         click.echo()
 
@@ -126,10 +156,12 @@ def list_memories(ctx, category, limit):
 @main.command()
 @click.pass_context
 def stats(ctx):
-    """查看统计信息"""
+    """查看统计信息（含过期数）"""
     engine = ctx.obj["engine"]
     s = engine.stats()
     click.echo(f"total: {s['total']}")
+    if s.get("expired", 0) > 0:
+        click.echo(f"expired: {s['expired']}")
     for cat, cnt in s["categories"].items():
         click.echo(f"  {cat}: {cnt}")
     if s["vector_enabled"]:
@@ -227,6 +259,15 @@ def reindex(ctx):
     engine = ctx.obj["engine"]
     result = engine.reindex_fts()
     click.echo(f"reindexed: {result['reindexed']} memories")
+
+
+@main.command()
+@click.pass_context
+def cleanup(ctx):
+    """清理过期记忆"""
+    engine = ctx.obj["engine"]
+    count = engine.cleanup_expired()
+    click.echo(f"cleaned up: {count} expired memories")
 
 
 if __name__ == "__main__":

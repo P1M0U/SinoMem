@@ -38,6 +38,8 @@ def store_memory(
     category: str = "general",
     tags: list[str] = None,
     skip_duplicate: bool = True,
+    ttl: str | None = None,
+    importance: float = 0.5,
 ) -> dict:
     """存储一条记忆
 
@@ -46,11 +48,20 @@ def store_memory(
         category: 分类 (user_pref, project, tool, general)
         tags: 标签列表
         skip_duplicate: 是否跳过重复内容（默认 True）
+        ttl: 过期时间，如 "30d" / "24h" / "7d12h"（None 永不过期）
+        importance: 重要性评分 0.0~1.0（默认 0.5）
     """
     if tags is None:
         tags = []
     engine = _get_engine()
-    memory_id = engine.store(content, category, tags, skip_duplicate)
+    memory_id = engine.store(
+        content,
+        category,
+        tags,
+        skip_duplicate,
+        ttl=ttl,
+        importance=importance,
+    )
     return {"id": memory_id, "status": "ok"}
 
 
@@ -60,9 +71,13 @@ def search_memory(
 ) -> list[dict]:
     """搜索记忆（支持 keyword / semantic / hybrid 三种模式）
 
+    keyword: BM25 关键词匹配
+    semantic: 向量语义相似度
+    hybrid: RRF 排名融合（无需手动加权）
+
     Args:
         query: 搜索关键词
-        mode: keyword（关键词匹配）| semantic（语义相似）| hybrid（混合排序）
+        mode: keyword（关键词BM25）| semantic（语义）| hybrid（RRF融合）
         limit: 返回条数
     """
     engine = _get_engine()
@@ -86,14 +101,18 @@ def update_memory(
     content: str | None = None,
     category: str | None = None,
     tags: list[str] | None = None,
+    importance: float | None = None,
+    ttl: str | None = None,
 ) -> dict:
-    """更新记忆内容/分类/标签
+    """更新记忆内容/分类/标签/重要性/过期时间
 
     Args:
         memory_id: 记忆 id
         content: 新内容（None 表示不改）
         category: 新分类（None 表示不改）
         tags: 新标签（None 表示不改）
+        importance: 重要性 0.0~1.0（None 表示不改）
+        ttl: 过期时间 30d/24h/7d12h（None 表示不改）
     """
     engine = _get_engine()
     ok = engine.update(
@@ -101,6 +120,8 @@ def update_memory(
         content=content,
         category=category,
         tags=tags,
+        importance=importance,
+        ttl=ttl,
     )
     return {"status": "ok" if ok else "not_found"}
 
@@ -138,8 +159,16 @@ def reindex_memories() -> dict:
 
 
 @mcp.tool()
+def cleanup_memories() -> dict:
+    """清理所有已过期的记忆"""
+    engine = _get_engine()
+    count = engine.cleanup_expired()
+    return {"status": "ok", "cleaned": count}
+
+
+@mcp.tool()
 def list_memories(category: str | None = None, limit: int = 20) -> list[dict]:
-    """列出记忆
+    """列出记忆（按重要性排序，排除过期）
 
     Args:
         category: 按分类过滤（None 返回全部）
@@ -151,7 +180,7 @@ def list_memories(category: str | None = None, limit: int = 20) -> list[dict]:
 
 @mcp.tool()
 def memory_stats() -> dict:
-    """查看记忆统计信息"""
+    """查看记忆统计信息（含过期记忆数）"""
     engine = _get_engine()
     return engine.stats()
 

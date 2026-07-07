@@ -4,9 +4,12 @@ import sqlite3
 from pathlib import Path
 
 from .config import DEFAULT_DB_PATH
-from .schema import SCHEMA_SQL, vec_table_sql
+from .logger import get_logger
+from .schema import SCHEMA_SQL, SCHEMA_VERSION, run_migrations, vec_table_sql
 from .search import SearchEngine
 from .store import MemoryStore
+
+logger = get_logger(__name__)
 
 
 class MemoryEngine:
@@ -22,9 +25,18 @@ class MemoryEngine:
         self._vec_dim: int = 0
         self._init_schema()
         self._init_vec()
+        # 运行迁移
+        run_migrations(self.conn)
 
         self._store = MemoryStore(self.conn, embedder, self._vec_dim)
         self._search = SearchEngine(self.conn, embedder, self._vec_dim)
+
+        logger.info(
+            "MemoryEngine 初始化完成 db=%s vec=%s schema_version=%d",
+            self.db_path,
+            "enabled" if self._has_vec() else "disabled",
+            SCHEMA_VERSION,
+        )
 
     def _init_schema(self):
         """初始化 FTS5 表结构"""
@@ -42,22 +54,22 @@ class MemoryEngine:
             sqlite_vec.load(self.conn)
             self.conn.enable_load_extension(False)
         except Exception:
-            # sqlite-vec 不可用（打包环境/ARM/扩展禁用），跳过向量功能
+            logger.warning("sqlite-vec 加载失败，跳过向量功能")
             return
 
         try:
             self._vec_dim = self._embedder.dim
         except Exception:
-            # 嵌入模型加载失败（文件缺失/损坏），降级为纯 FTS5
+            logger.warning("嵌入模型加载失败，降级为纯 FTS5")
             self._embedder = None
             return
 
-        # 创建向量表
         try:
             self.conn.execute(vec_table_sql(self._vec_dim))
             self.conn.commit()
+            logger.info("向量表创建成功 dim=%d", self._vec_dim)
         except Exception:
-            # 向量表创建失败，降级
+            logger.warning("向量表创建失败，降级为纯 FTS5")
             self._vec_dim = 0
             self._embedder = None
 
@@ -73,9 +85,23 @@ class MemoryEngine:
         category: str = "general",
         tags: list[str] | None = None,
         skip_duplicate: bool = True,
+        ttl: str | None = None,
+        importance: float = 0.5,
     ) -> int:
-        """存储一条记忆，返回 id（默认跳过重复内容）"""
-        return self._store.store(content, category, tags, skip_duplicate)
+        """存储一条记忆，返回 id（默认跳过重复内容）
+
+        Args:
+            ttl: 过期时间，如 "30d" / "24h" / "7d12h"
+            importance: 重要性 0.0~1.0
+        """
+        return self._store.store(
+            content,
+            category,
+            tags,
+            skip_duplicate,
+            ttl=ttl,
+            importance=importance,
+        )
 
     def search(
         self,
@@ -84,7 +110,7 @@ class MemoryEngine:
         limit: int = 5,
         keyword_weight: float = 0.4,
     ) -> list[dict]:
-        """搜索记忆"""
+        """搜索记忆（keyword: BM25, hybrid: RRF 融合）"""
         return self._search.search(query, mode, limit, keyword_weight)
 
     def get(self, memory_id: int) -> dict | None:
@@ -97,9 +123,18 @@ class MemoryEngine:
         content: str | None = None,
         category: str | None = None,
         tags: list[str] | None = None,
+        importance: float | None = None,
+        ttl: str | None = None,
     ) -> bool:
         """更新记忆"""
-        return self._store.update(memory_id, content, category, tags)
+        return self._store.update(
+            memory_id,
+            content,
+            category,
+            tags,
+            importance=importance,
+            ttl=ttl,
+        )
 
     def delete(self, memory_id: int) -> bool:
         """删除记忆"""
@@ -108,12 +143,16 @@ class MemoryEngine:
     def list_memories(
         self, category: str | None = None, limit: int = 20
     ) -> list[dict]:
-        """列出记忆"""
+        """列出记忆（排除过期）"""
         return self._store.list_memories(category, limit)
 
     def stats(self) -> dict:
         """统计信息"""
         return self._store.stats()
+
+    def cleanup_expired(self) -> int:
+        """清理过期记忆"""
+        return self._store.cleanup_expired()
 
     def exists_by_content(self, content: str) -> bool:
         """检查是否已存在相同内容的记忆"""
@@ -124,7 +163,7 @@ class MemoryEngine:
         return self._store.get_vector_ids()
 
     def get_vec_dim(self) -> int | None:
-        """获取现有向量表的维度（从 sqlite_master 读取 CREATE TABLE 语句解析）"""
+        """获取现有向量表的维度"""
         return self._store.get_vec_dim()
 
     def add_vector(self, memory_id: int, embedding_bytes: bytes) -> None:
@@ -132,15 +171,15 @@ class MemoryEngine:
         self._store.add_vector(memory_id, embedding_bytes)
 
     def vacuum(self) -> dict:
-        """回收已删除空间，返回数据库文件大小变化"""
+        """回收已删除空间"""
         return self._store.vacuum()
 
     def delete_by_category(self, category: str) -> int:
-        """按分类批量删除记忆，返回删除条数"""
+        """按分类批量删除记忆"""
         return self._store.delete_by_category(category)
 
     def delete_all(self) -> int:
-        """清空所有记忆，返回删除条数"""
+        """清空所有记忆"""
         return self._store.delete_all()
 
     def reindex_fts(self) -> dict:
@@ -150,6 +189,7 @@ class MemoryEngine:
     def close(self):
         """关闭数据库连接"""
         self.conn.close()
+        logger.info("MemoryEngine 已关闭")
 
     def __enter__(self):
         return self
@@ -168,8 +208,6 @@ def create_engine(
         from .embedder import Embedder
 
         embedder = Embedder(model_dir)
-        # 主动触发模型加载（Embedder 是懒加载的，.dim 才真正加载）
-        # 放在 try 内，加载失败则降级为纯 FTS5 模式
         _ = embedder.dim
     except Exception:
         embedder = None
@@ -177,7 +215,6 @@ def create_engine(
     try:
         return MemoryEngine(db_path, embedder=embedder)
     except Exception:
-        # MemoryEngine 构造失败时也降级
         if embedder is not None:
             embedder = None
             return MemoryEngine(db_path, embedder=embedder)

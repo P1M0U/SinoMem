@@ -1,13 +1,62 @@
-"""记忆 CRUD 存储层"""
+"""记忆 CRUD 存储层（TTL 过期 + 重要性评分 + 结构化日志）"""
 
 import contextlib
 import json
 import sqlite3
+from datetime import UTC, datetime
 
+from .logger import get_logger
 from .tokenizer import tokenize
+
+logger = get_logger(__name__)
 
 # 内容最大长度（字符数），防止 LLM 写入超长文本导致搜索质量下降
 MAX_CONTENT_LENGTH = 8000
+
+
+def _parse_ttl(ttl: str | None) -> str | None:
+    """将人类可读的 TTL 字符串转换为 ISO 时间戳
+
+    支持格式: "30d"（天）, "24h"（小时）, "60m"（分钟）, "7d12h"
+    返回 None 如果 ttl 为空或无效
+    """
+    if not ttl or not isinstance(ttl, str):
+        return None
+
+    import re
+
+    units = {
+        "d": 86400,
+        "h": 3600,
+        "m": 60,
+    }
+    total_seconds = 0
+    for amount, unit in re.findall(r"(\d+)([dhm])", ttl.lower()):
+        total_seconds += int(amount) * units[unit]
+
+    if total_seconds <= 0:
+        return None
+
+    return (
+        datetime.now(UTC)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+        .replace("+00:00", "")
+    )
+
+
+def _iso_to_dt(ts: str | None):
+    """将 ISO 时间戳转为 datetime（宽松解析）"""
+    if not ts:
+        return None
+    try:
+        # 尝试标准格式
+        return datetime.fromisoformat(
+            ts.replace("Z", "+00:00").replace(" ", "T")
+        )
+    except (ValueError, TypeError):
+        return None
 
 
 def _row_to_dict(row, score: float | None = None) -> dict:
@@ -55,6 +104,8 @@ class MemoryStore:
         category: str = "general",
         tags: list[str] | None = None,
         skip_duplicate: bool = True,
+        ttl: str | None = None,
+        importance: float = 0.5,
     ) -> int:
         """存储一条记忆，返回 id
 
@@ -63,6 +114,8 @@ class MemoryStore:
             category: 分类
             tags: 标签列表
             skip_duplicate: 是否跳过重复内容（默认 True）
+            ttl: 过期时间，如 "30d" / "24h" / "7d12h"（None 永不过期）
+            importance: 重要性评分 0.0~1.0（默认 0.5）
         """
         if tags is None:
             tags = []
@@ -71,25 +124,38 @@ class MemoryStore:
         content = content.strip()
         if len(content) > MAX_CONTENT_LENGTH:
             content = content[:MAX_CONTENT_LENGTH]
+            logger.warning("内容过长，已截断至 %d 字符", MAX_CONTENT_LENGTH)
 
         if not content:
             raise ValueError("内容不能为空")
 
+        # 重要性范围校验
+        importance = max(0.0, min(1.0, importance))
+
+        # 解析 TTL
+        expires_at = _parse_ttl(ttl)
+
         # 自动去重：检查是否已存在相同内容
         if skip_duplicate and self.exists_by_content(content):
-            # 返回已有记忆的 id
             row = self.conn.execute(
                 "SELECT id FROM memories WHERE content = ? LIMIT 1",
                 (content,),
             ).fetchone()
+            logger.info(
+                "跳过重复内容 id=%d category=%s ttl=%s",
+                row["id"],
+                category,
+                ttl or "none",
+            )
             return row["id"]
 
         tags_json = json.dumps(tags, ensure_ascii=False)
         tokenized = tokenize(content)
 
         cursor = self.conn.execute(
-            "INSERT INTO memories (content, category, tags) VALUES (?, ?, ?)",
-            (content, category, tags_json),
+            "INSERT INTO memories (content, category, tags, importance, "
+            "expires_at) VALUES (?, ?, ?, ?, ?)",
+            (content, category, tags_json, importance, expires_at),
         )
         row_id = cursor.lastrowid
 
@@ -112,6 +178,13 @@ class MemoryStore:
             )
 
         self.conn.commit()
+        logger.info(
+            "存储记忆 id=%d category=%s importance=%.2f ttl=%s",
+            row_id,
+            category,
+            importance,
+            ttl or "none",
+        )
         return row_id
 
     def get(self, memory_id: int) -> dict | None:
@@ -127,14 +200,15 @@ class MemoryStore:
         content: str | None = None,
         category: str | None = None,
         tags: list[str] | None = None,
+        importance: float | None = None,
+        ttl: str | None = None,
     ) -> bool:
-        """更新记忆（三表同步：memories + memories_fts + memories_vec）"""
+        """更新记忆（支持 importance 和 ttl 独立更新）"""
         existing = self.get(memory_id)
         if not existing:
             return False
 
         new_content = content if content is not None else existing["content"]
-        # 截断过长内容
         new_content = new_content.strip()
         if len(new_content) > MAX_CONTENT_LENGTH:
             new_content = new_content[:MAX_CONTENT_LENGTH]
@@ -149,12 +223,29 @@ class MemoryStore:
             if isinstance(new_tags, list)
             else new_tags
         )
+        new_importance = (
+            importance
+            if importance is not None
+            else existing.get("importance", 0.5)
+        )
+        new_importance = max(0.0, min(1.0, new_importance))
+        new_expires_at = (
+            _parse_ttl(ttl) if ttl is not None else existing.get("expires_at")
+        )
         tokenized = tokenize(new_content)
 
         self.conn.execute(
             "UPDATE memories SET content=?, category=?, tags=?, "
-            "updated_at=CURRENT_TIMESTAMP WHERE id=?",
-            (new_content, new_category, tags_json, memory_id),
+            "importance=?, expires_at=?, updated_at=CURRENT_TIMESTAMP "
+            "WHERE id=?",
+            (
+                new_content,
+                new_category,
+                tags_json,
+                new_importance,
+                new_expires_at,
+                memory_id,
+            ),
         )
         # 更新 FTS5
         self.conn.execute(
@@ -167,7 +258,7 @@ class MemoryStore:
         )
 
         # 更新向量（仅向量模式下才 import numpy）
-        if self._has_vec() and self._embedder:
+        if self._has_vec() and self._embedder and content is not None:
             import numpy as np
 
             embedding = self._embedder.embed(new_content)
@@ -181,6 +272,7 @@ class MemoryStore:
             )
 
         self.conn.commit()
+        logger.info("更新记忆 id=%d", memory_id)
         return True
 
     def delete(self, memory_id: int) -> bool:
@@ -198,30 +290,38 @@ class MemoryStore:
             )
         self.conn.execute("DELETE FROM memories WHERE id=?", (memory_id,))
         self.conn.commit()
+        logger.info("删除记忆 id=%d", memory_id)
         return True
 
     def list_memories(
         self, category: str | None = None, limit: int = 20
     ) -> list[dict]:
-        """列出记忆"""
+        """列出记忆（排除已过期的）"""
         if category:
             rows = self.conn.execute(
-                "SELECT * FROM memories WHERE category=? "
-                "ORDER BY created_at DESC LIMIT ?",
+                "SELECT * FROM memories WHERE category=? AND "
+                "(expires_at IS NULL OR expires_at > datetime('now')) "
+                "ORDER BY importance DESC, created_at DESC LIMIT ?",
                 (category, limit),
             ).fetchall()
         else:
             rows = self.conn.execute(
-                "SELECT * FROM memories ORDER BY created_at DESC LIMIT ?",
+                "SELECT * FROM memories WHERE "
+                "(expires_at IS NULL OR expires_at > datetime('now')) "
+                "ORDER BY importance DESC, created_at DESC LIMIT ?",
                 (limit,),
             ).fetchall()
         return [_row_to_dict(row) for row in rows]
 
     def stats(self) -> dict:
-        """统计信息"""
+        """统计信息（含过期记忆数）"""
         total = self.conn.execute("SELECT COUNT(*) FROM memories").fetchone()[
             0
         ]
+        expired = self.conn.execute(
+            "SELECT COUNT(*) FROM memories "
+            "WHERE expires_at IS NOT NULL AND expires_at <= datetime('now')"
+        ).fetchone()[0]
         categories = self.conn.execute(
             "SELECT category, COUNT(*) as cnt FROM memories "
             "GROUP BY category ORDER BY cnt DESC"
@@ -233,13 +333,44 @@ class MemoryStore:
             ).fetchone()[0]
         return {
             "total": total,
+            "expired": expired,
             "categories": {row["category"]: row["cnt"] for row in categories},
             "vectors": vec_count,
             "vector_enabled": self._has_vec(),
         }
 
+    def cleanup_expired(self) -> int:
+        """清理过期记忆，返回删除条数"""
+        ids = [
+            r["id"]
+            for r in self.conn.execute(
+                "SELECT id FROM memories "
+                "WHERE expires_at IS NOT NULL AND expires_at <= datetime('now')"
+            ).fetchall()
+        ]
+
+        if not ids:
+            return 0
+
+        placeholders = ",".join("?" * len(ids))
+        self.conn.execute(
+            f"DELETE FROM memories_fts WHERE rowid IN ({placeholders})",
+            ids,
+        )
+        if self._has_vec():
+            self.conn.execute(
+                f"DELETE FROM memories_vec WHERE id IN ({placeholders})", ids
+            )
+        self.conn.execute(
+            f"DELETE FROM memories WHERE id IN ({placeholders})", ids
+        )
+        self.conn.commit()
+        logger.info("清理过期记忆: %d 条", len(ids))
+        return len(ids)
+
     def reindex_fts(self) -> dict:
-        """重新分词所有记忆并重建 FTS5 索引（用于 jieba 词典更新后）"""
+        """重新分词所有记忆并重建 FTS5 索引"""
+        logger.info("重建 FTS5 索引...")
         memories = self.conn.execute(
             "SELECT id, content, tags, category FROM memories"
         ).fetchall()
@@ -256,6 +387,7 @@ class MemoryStore:
             )
             count += 1
         self.conn.commit()
+        logger.info("FTS5 重建完成: %d 条", count)
         return {"reindexed": count}
 
     def exists_by_content(self, content: str) -> bool:
@@ -272,14 +404,7 @@ class MemoryStore:
         return {r["id"] for r in rows}
 
     def get_vec_dim(self) -> int | None:
-        """获取现有向量表的维度（从 sqlite_master 解析 CREATE TABLE）
-
-        vec0 虚拟表的 CREATE TABLE 语句如：
-        CREATE VIRTUAL TABLE memories_vec USING vec0(
-            id INTEGER PRIMARY KEY,
-            embedding float[512]
-        )
-        """
+        """获取现有向量表的维度（从 sqlite_master 解析 CREATE TABLE）"""
         import re
 
         if not self._has_vec():
@@ -319,7 +444,6 @@ class MemoryStore:
         import os
 
         db_path = None
-        # 查找数据库文件路径
         self.conn.execute("PRAGMA database_list")
         for row in self.conn.execute("PRAGMA database_list"):
             if row["name"] == "main":
@@ -330,15 +454,21 @@ class MemoryStore:
         self.conn.execute("VACUUM")
         size_after = os.path.getsize(db_path) if db_path else 0
 
-        return {
+        result = {
             "size_before": size_before,
             "size_after": size_after,
             "freed": size_before - size_after,
         }
+        logger.info(
+            "VACUUM: %.1f KB → %.1f KB (释放 %.1f KB)",
+            size_before / 1024,
+            size_after / 1024,
+            (size_before - size_after) / 1024,
+        )
+        return result
 
     def delete_by_category(self, category: str) -> int:
         """按分类批量删除记忆，返回删除条数"""
-        # 先获取要删除的 ID
         ids = [
             r["id"]
             for r in self.conn.execute(
@@ -349,7 +479,6 @@ class MemoryStore:
         if not ids:
             return 0
 
-        # 三表同步删除
         placeholders = ",".join("?" * len(ids))
         self.conn.execute(
             f"DELETE FROM memories_fts WHERE rowid IN ({placeholders})",
@@ -363,10 +492,11 @@ class MemoryStore:
             f"DELETE FROM memories WHERE id IN ({placeholders})", ids
         )
         self.conn.commit()
+        logger.info("按分类删除: %s → %d 条", category, len(ids))
         return len(ids)
 
     def delete_all(self) -> int:
-        """清空所有记忆，返回删除条数"""
+        """清空所有记忆"""
         count = self.conn.execute("SELECT COUNT(*) FROM memories").fetchone()[
             0
         ]
@@ -375,4 +505,5 @@ class MemoryStore:
             self.conn.execute("DELETE FROM memories_vec")
         self.conn.execute("DELETE FROM memories")
         self.conn.commit()
+        logger.info("清空所有记忆: %d 条", count)
         return count
