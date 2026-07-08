@@ -252,6 +252,92 @@ def clean(ctx, category, force):
         click.echo(f"deleted all {count} memories")
 
 
+@main.command("store-batch")
+@click.option(
+    "--file",
+    "json_file",
+    type=click.File("r", encoding="utf-8"),
+    required=True,
+    help="JSON 文件路径（每行一个 JSON 对象或整个数组）",
+)
+@click.option("--allow-duplicate", is_flag=True, help="允许重复存储相同内容")
+@click.pass_context
+def store_batch_cmd(ctx, json_file, allow_duplicate):
+    """从 JSON 文件批量导入记忆
+
+    JSON 格式（每行一条或整个数组）：
+    [{"content": "...", "category": "tool", "tags": ["a"],
+      "ttl": "30d", "importance": 0.8}, ...]
+    """
+    import json as _json
+
+    raw = json_file.read()
+    try:
+        data = _json.loads(raw)
+        if not isinstance(data, list):
+            click.echo("错误: JSON 必须是数组格式 [...]")
+            return
+    except _json.JSONDecodeError:
+        # 尝试按行解析
+        data = [
+            _json.loads(line)
+            for line in raw.strip().splitlines()
+            if line.strip()
+        ]
+
+    if not data:
+        click.echo("(empty)")
+        return
+
+    engine = ctx.obj["engine"]
+    try:
+        ids = engine.store_batch(data, skip_duplicate=not allow_duplicate)
+    except ValueError as e:
+        click.echo(f"错误: {e}")
+        return
+
+    for i, mid in enumerate(ids):
+        click.echo(f"[{i + 1}/{len(ids)}] ok  id={mid}")
+
+
+@main.command("search-batch")
+@click.argument("queries", nargs=-1)
+@click.option(
+    "-m",
+    "--mode",
+    default="keyword",
+    type=click.Choice(["keyword", "semantic", "hybrid"]),
+    help="搜索模式",
+)
+@click.option("-l", "--limit", default=5, help="每个查询返回条数")
+@click.pass_context
+def search_batch_cmd(ctx, queries, mode, limit):
+    """批量搜索多个关键词
+
+    示例: uv run aml search-batch "飞书" "Docker" "Python" -m keyword
+    """
+    if not queries:
+        click.echo("(no queries)")
+        return
+
+    engine = ctx.obj["engine"]
+    query_list = [{"query": q, "mode": mode, "limit": limit} for q in queries]
+    all_results = engine.search_batch(query_list)
+
+    for i, (query, results) in enumerate(
+        zip(queries, all_results, strict=True)
+    ):
+        click.echo(f'─── 查询 {i + 1}: "{query}" ───')
+        if not results:
+            click.echo("  (no results)")
+        for r in results:
+            tags_str = f"  [{', '.join(r['tags'])}]" if r.get("tags") else ""
+            score_str = f"  score={r['score']}" if "score" in r else ""
+            click.echo(f"  #{r['id']}  {r['category']}{tags_str}{score_str}")
+            click.echo(f"    {r['content'][:80]}")
+        click.echo()
+
+
 @main.command()
 @click.pass_context
 def reindex(ctx):

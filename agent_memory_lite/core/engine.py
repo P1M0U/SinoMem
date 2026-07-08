@@ -186,6 +186,16 @@ class MemoryEngine:
         """重新分词所有记忆并重建 FTS5 索引"""
         return self._store.reindex_fts()
 
+    def store_batch(
+        self, items: list[dict], skip_duplicate: bool = True
+    ) -> list[int]:
+        """批量存储记忆（单事务），返回 id 列表"""
+        return self._store.store_batch(items, skip_duplicate)
+
+    def search_batch(self, queries: list[dict]) -> list[dict]:
+        """批量搜索（共享模型加载）"""
+        return self._search.search_batch(queries)
+
     def close(self):
         """关闭数据库连接"""
         self.conn.close()

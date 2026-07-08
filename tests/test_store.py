@@ -111,3 +111,52 @@ class TestStoreCRUD:
         engine.store("测试重新分词")  # noqa: B018
         result = engine.reindex_fts()
         assert result["reindexed"] >= 1
+
+
+class TestBatchOperations:
+    def test_store_batch(self, engine):
+        """批量存储多条记忆"""
+        items = [
+            {"content": "批量测试 A", "category": "tool"},
+            {
+                "content": "批量测试 B",
+                "category": "user_pref",
+                "importance": 0.9,
+            },
+            {"content": "批量测试 C", "tags": ["test"], "ttl": "30d"},
+        ]
+        ids = engine.store_batch(items)
+        assert len(ids) == 3
+        for mid in ids:
+            assert engine.get(mid) is not None
+
+    def test_store_batch_dedup(self, engine):
+        """批量存储自动去重"""
+        engine.store("去重测试")
+        items = [{"content": "去重测试"}, {"content": "新内容"}]
+        ids = engine.store_batch(items)
+        assert len(ids) == 2
+        # 第一条返回已有 id，第二条新建
+        assert ids[0] < ids[1]
+
+    def test_store_batch_empty(self, engine):
+        """空列表返回空结果"""
+        assert engine.store_batch([]) == []
+
+    def test_search_batch(self, engine):
+        """批量搜索多个关键词"""
+        engine.store("飞书发送文件")
+        engine.store("Docker 部署")
+        engine.store("Python 编程")
+        queries = [
+            {"query": "飞书"},
+            {"query": "Docker"},
+            {"query": "不存在"},
+        ]
+        results = engine.search_batch(queries)
+        assert len(results) == 3
+        assert len(results[0]) >= 1
+        assert "飞书" in results[0][0]["content"]
+        assert len(results[1]) >= 1
+        assert "Docker" in results[1][0]["content"]
+        assert results[2] == []

@@ -8,7 +8,9 @@ from agent_memory_lite.entrypoints.mcp_server import (
     get_memory,
     list_memories,
     memory_stats,
+    search_memories_batch,
     search_memory,
+    store_memories_batch,
     store_memory,
     update_memory,
 )
@@ -75,3 +77,24 @@ class TestMCPTools:
         s = memory_stats()
         assert s["total"] == 2
         assert s["categories"]["tool"] == 2
+
+    def test_store_memories_batch_tool(self, setup_engine):
+        """批量存储 MCP 工具"""
+        items = [
+            {"content": "批量 MCP A", "category": "tool"},
+            {"content": "批量 MCP B", "importance": 0.9},
+        ]
+        result = store_memories_batch(items)
+        assert result["status"] == "ok"
+        assert result["count"] == 2
+        assert len(result["ids"]) == 2
+
+    def test_search_memories_batch_tool(self, setup_engine):
+        """批量搜索 MCP 工具"""
+        store_memory("飞书", category="tool")
+        store_memory("Docker", category="tool")
+        queries = [{"query": "飞书"}, {"query": "不存在"}]
+        results = search_memories_batch(queries)
+        assert len(results) == 2
+        assert len(results[0]) >= 1
+        assert results[1] == []

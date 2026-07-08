@@ -188,3 +188,24 @@ class SearchEngine:
             _row_to_dict(row, score=round(1.0 / (1.0 + row["distance"]), 4))
             for row in rows
         ]
+
+    def search_batch(
+        self,
+        queries: list[dict],
+    ) -> list[dict]:
+        """批量搜索（共享模型加载），返回每个 query 的结果列表
+
+        Args:
+            queries: [{"query": "...", "mode": "keyword", "limit": 5}, ...]
+
+        每个 query 项的 mode 默认为 "keyword"，limit 默认为 5
+        """
+        results = []
+        for q in queries:
+            query = q["query"]
+            mode = q.get("mode", "keyword")
+            limit = q.get("limit", 5)
+            results.append(self.search(query, mode=mode, limit=limit))
+
+        logger.info("批量搜索完成: %d 个查询", len(queries))
+        return results

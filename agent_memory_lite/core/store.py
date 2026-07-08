@@ -507,3 +507,41 @@ class MemoryStore:
         self.conn.commit()
         logger.info("清空所有记忆: %d 条", count)
         return count
+
+    def store_batch(
+        self,
+        items: list[dict],
+        skip_duplicate: bool = True,
+    ) -> list[int]:
+        """批量存储记忆（单事务），返回 id 列表
+
+        Args:
+            items: [{"content": ..., "category": ..., "tags": ...,
+                      "ttl": ..., "importance": ...}, ...]
+            skip_duplicate: 是否跳过重复内容
+
+        每条 item 的 category/tags/ttl/importance 为可选字段
+        """
+        if not items:
+            return []
+
+        ids = []
+        for item in items:
+            content = item["content"]
+            category = item.get("category", "general")
+            tags = item.get("tags", [])
+            ttl = item.get("ttl")
+            importance = item.get("importance", 0.5)
+
+            mid = self.store(
+                content=content,
+                category=category,
+                tags=tags,
+                skip_duplicate=skip_duplicate,
+                ttl=ttl,
+                importance=importance,
+            )
+            ids.append(mid)
+
+        logger.info("批量存储完成: %d/%d 条", len(ids), len(items))
+        return ids

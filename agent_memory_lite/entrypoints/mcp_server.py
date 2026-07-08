@@ -167,6 +167,36 @@ def cleanup_memories() -> dict:
 
 
 @mcp.tool()
+def store_memories_batch(
+    items: list[dict],
+    skip_duplicate: bool = True,
+) -> dict:
+    """批量存储多条记忆（单事务）
+
+    Args:
+        items: [{"content": "...", "category": "general", "tags": [],
+                  "ttl": "30d", "importance": 0.5}, ...]
+        skip_duplicate: 是否跳过重复内容
+    """
+    engine = _get_engine()
+    ids = engine.store_batch(items, skip_duplicate=skip_duplicate)
+    return {"ids": ids, "count": len(ids), "status": "ok"}
+
+
+@mcp.tool()
+def search_memories_batch(
+    queries: list[dict],
+) -> list[list[dict]]:
+    """批量搜索（共享模型加载）
+
+    Args:
+        queries: [{"query": "...", "mode": "keyword", "limit": 5}, ...]
+    """
+    engine = _get_engine()
+    return engine.search_batch(queries)
+
+
+@mcp.tool()
 def list_memories(category: str | None = None, limit: int = 20) -> list[dict]:
     """列出记忆（按重要性排序，排除过期）
 
