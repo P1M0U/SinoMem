@@ -34,7 +34,6 @@ class SearchEngine:
         query: str,
         mode: str = "keyword",
         limit: int = 5,
-        keyword_weight: float = 0.4,
     ) -> list[dict]:
         """搜索记忆
 
@@ -42,7 +41,6 @@ class SearchEngine:
             query: 搜索关键词
             mode: keyword（关键词BM25）| semantic（语义）| hybrid（RRF混合）
             limit: 返回条数
-            keyword_weight: 已弃用（hybrid 模式使用 RRF 无需加权），保留向后兼容
         """
         if mode == "semantic":
             return self._semantic_search(query, limit)

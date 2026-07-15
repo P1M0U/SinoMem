@@ -1,8 +1,10 @@
 """记忆 CRUD 存储层（TTL 过期 + 重要性评分 + 结构化日志）"""
 
 import contextlib
+import functools
 import json
 import sqlite3
+import time
 from datetime import UTC, datetime
 
 from .logger import get_logger
@@ -42,7 +44,6 @@ def _parse_ttl(ttl: str | None) -> str | None:
         .replace(microsecond=0)
         .isoformat()
         .replace("+00:00", "Z")
-        .replace("+00:00", "")
     )
 
 
@@ -81,6 +82,31 @@ def update_access(conn: sqlite3.Connection, rows: list) -> None:
     conn.commit()
 
 
+def _retry_on_lock(max_retries: int = 3, base_delay: float = 0.05):
+    """SQLite 写锁重试装饰器（busy_timeout 之外的兜底保护）
+
+    WAL 模式下写操作仍串行化——多线程/协程同时写入时 SQLite 可能抛出
+    ``database is locked``。本装饰器以指数退避自动重试，配合连接级
+    ``PRAGMA busy_timeout`` 形成双层保护。
+    """
+
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(self, *args, **kwargs):
+            for attempt in range(max_retries):
+                try:
+                    return func(self, *args, **kwargs)
+                except sqlite3.OperationalError as e:
+                    if "locked" not in str(e) or attempt == max_retries - 1:
+                        raise
+                    time.sleep(base_delay * (2**attempt))
+            return None  # unreachable
+
+        return wrapper
+
+    return decorator
+
+
 class MemoryStore:
     """记忆 CRUD 操作"""
 
@@ -98,6 +124,7 @@ class MemoryStore:
         """是否有向量表"""
         return self._vec_dim > 0
 
+    @_retry_on_lock()
     def store(
         self,
         content: str,
@@ -194,6 +221,7 @@ class MemoryStore:
         ).fetchone()
         return _row_to_dict(row) if row else None
 
+    @_retry_on_lock()
     def update(
         self,
         memory_id: int,
@@ -275,6 +303,7 @@ class MemoryStore:
         logger.info("更新记忆 id=%d", memory_id)
         return True
 
+    @_retry_on_lock()
     def delete(self, memory_id: int) -> bool:
         """删除记忆（三表同步）"""
         existing = self.get(memory_id)
@@ -339,6 +368,7 @@ class MemoryStore:
             "vector_enabled": self._has_vec(),
         }
 
+    @_retry_on_lock()
     def cleanup_expired(self) -> int:
         """清理过期记忆，返回删除条数"""
         ids = [
@@ -368,27 +398,33 @@ class MemoryStore:
         logger.info("清理过期记忆: %d 条", len(ids))
         return len(ids)
 
+    @_retry_on_lock()
     def reindex_fts(self) -> dict:
         """重新分词所有记忆并重建 FTS5 索引"""
         logger.info("重建 FTS5 索引...")
         memories = self.conn.execute(
             "SELECT id, content, tags, category FROM memories"
         ).fetchall()
-        count = 0
-        for mem in memories:
-            tokenized = tokenize(mem["content"])
-            self.conn.execute(
-                "DELETE FROM memories_fts WHERE rowid=?", (mem["id"],)
+
+        # 先清空再批量插入（N+1 次 SQL vs 原来 2N 次）
+        self.conn.execute("DELETE FROM memories_fts")
+        rows = [
+            (
+                m["id"],
+                tokenize(m["content"]),
+                m["tags"],
+                m["category"],
             )
-            self.conn.execute(
-                "INSERT INTO memories_fts (rowid, content, tags, category) "
-                "VALUES (?, ?, ?, ?)",
-                (mem["id"], tokenized, mem["tags"], mem["category"]),
-            )
-            count += 1
+            for m in memories
+        ]
+        self.conn.executemany(
+            "INSERT INTO memories_fts (rowid, content, tags, category)"
+            " VALUES (?, ?, ?, ?)",
+            rows,
+        )
         self.conn.commit()
-        logger.info("FTS5 重建完成: %d 条", count)
-        return {"reindexed": count}
+        logger.info("FTS5 重建完成: %d 条", len(rows))
+        return {"reindexed": len(rows)}
 
     def exists_by_content(self, content: str) -> bool:
         row = self.conn.execute(
@@ -508,40 +544,155 @@ class MemoryStore:
         logger.info("清空所有记忆: %d 条", count)
         return count
 
+    @_retry_on_lock()
     def store_batch(
         self,
         items: list[dict],
         skip_duplicate: bool = True,
     ) -> list[int]:
-        """批量存储记忆（单事务），返回 id 列表
+        """批量存储记忆（单事务 + 单 commit），返回 id 列表
+
+        与逐条 store() 不同，本方法使用 executemany 批量写入主表、
+        FTS5 和向量表，全程仅一次 commit，大幅降低批量导入的 I/O 开销。
 
         Args:
             items: [{"content": ..., "category": ..., "tags": ...,
                       "ttl": ..., "importance": ...}, ...]
-            skip_duplicate: 是否跳过重复内容
+            skip_duplicate: 是否跳过重复内容（默认 True）
 
         每条 item 的 category/tags/ttl/importance 为可选字段
         """
         if not items:
             return []
 
-        ids = []
+        # ── 1. 预处理：提取并校验所有 item ──
+        processed = []
         for item in items:
-            content = item["content"]
+            content = item["content"].strip()
+            if not content:
+                raise ValueError("内容不能为空")
+            if len(content) > MAX_CONTENT_LENGTH:
+                content = content[:MAX_CONTENT_LENGTH]
+                logger.warning(
+                    "内容过长，已截断至 %d 字符", MAX_CONTENT_LENGTH
+                )
             category = item.get("category", "general")
             tags = item.get("tags", [])
-            ttl = item.get("ttl")
-            importance = item.get("importance", 0.5)
-
-            mid = self.store(
-                content=content,
-                category=category,
-                tags=tags,
-                skip_duplicate=skip_duplicate,
-                ttl=ttl,
-                importance=importance,
+            tags_json = json.dumps(tags, ensure_ascii=False)
+            importance = max(0.0, min(1.0, item.get("importance", 0.5)))
+            expires_at = _parse_ttl(item.get("ttl"))
+            processed.append(
+                {
+                    "content": content,
+                    "category": category,
+                    "tags_json": tags_json,
+                    "importance": importance,
+                    "expires_at": expires_at,
+                }
             )
-            ids.append(mid)
 
-        logger.info("批量存储完成: %d/%d 条", len(ids), len(items))
+        # ── 2. 批量去重（一次 SQL IN 查询替代逐条 check）──
+        content_to_existing_id: dict[str, int] = {}
+        if skip_duplicate and processed:
+            contents = [p["content"] for p in processed]
+            placeholders = ",".join("?" * len(contents))
+            rows = self.conn.execute(
+                f"SELECT id, content FROM memories "
+                f"WHERE content IN ({placeholders})",
+                contents,
+            ).fetchall()
+            content_to_existing_id = {r["content"]: r["id"] for r in rows}
+
+        # ── 3. 分离新条目与已存在条目 ──
+        ids: list[int] = []
+        new_items: list[tuple[int, dict]] = []
+        for i, p in enumerate(processed):
+            if p["content"] in content_to_existing_id:
+                existing_id = content_to_existing_id[p["content"]]
+                ids.append(existing_id)
+                logger.info(
+                    "跳过重复内容 id=%d category=%s",
+                    existing_id,
+                    p["category"],
+                )
+            else:
+                ids.append(-1)  # 占位，后续用真实 id 回填
+                new_items.append((i, p))
+
+        # ── 4. 批量写入新条目（单事务）──
+        if new_items:
+            main_rows = [
+                (
+                    p["content"],
+                    p["category"],
+                    p["tags_json"],
+                    p["importance"],
+                    p["expires_at"],
+                )
+                for _, p in new_items
+            ]
+
+            # 获取插入前的最大 id，用于反推新 id 区间
+            max_before = self.conn.execute(
+                "SELECT COALESCE(MAX(id), 0) FROM memories"
+            ).fetchone()[0]
+
+            self.conn.executemany(
+                "INSERT INTO memories (content, category, tags, "
+                "importance, expires_at) VALUES (?, ?, ?, ?, ?)",
+                main_rows,
+            )
+
+            # 反推新 id（SQLite 自增序列连续，事务内安全）
+            new_count = len(new_items)
+            new_ids = list(range(max_before + 1, max_before + 1 + new_count))
+
+            # 回填占位
+            for j, (orig_idx, _) in enumerate(new_items):
+                ids[orig_idx] = new_ids[j]
+
+            # FTS5 批量写入
+            fts_rows = [
+                (
+                    new_ids[j],
+                    tokenize(p["content"]),
+                    p["tags_json"],
+                    p["category"],
+                )
+                for j, (_, p) in enumerate(new_items)
+            ]
+            self.conn.executemany(
+                "INSERT INTO memories_fts (rowid, content, tags, "
+                "category) VALUES (?, ?, ?, ?)",
+                fts_rows,
+            )
+
+            # 向量批量写入（关键：embed_batch 一次性推理，
+            # 避免逐条的 ONNX 调用开销）
+            if self._has_vec() and self._embedder:
+                import numpy as np
+
+                new_contents = [p["content"] for _, p in new_items]
+                embeddings = self._embedder.embed_batch(new_contents)
+                vec_rows = [
+                    (
+                        new_ids[j],
+                        np.array(emb, dtype=np.float32).tobytes(),
+                    )
+                    for j, emb in enumerate(embeddings)
+                ]
+                self.conn.executemany(
+                    "INSERT INTO memories_vec (id, embedding) VALUES (?, ?)",
+                    vec_rows,
+                )
+
+            self.conn.commit()
+            logger.info(
+                "批量存储完成: %d 条新增, %d 条跳过",
+                new_count,
+                len(processed) - new_count,
+            )
+        else:
+            logger.info("批量存储完成: 全部 %d 条已存在，跳过", len(processed))
+
         return ids

@@ -21,6 +21,7 @@ class MemoryEngine:
         self.conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
         self.conn.execute("PRAGMA journal_mode=WAL")
+        self.conn.execute("PRAGMA busy_timeout=5000")
         self._embedder = embedder
         self._vec_dim: int = 0
         self._init_schema()
@@ -108,10 +109,9 @@ class MemoryEngine:
         query: str,
         mode: str = "keyword",
         limit: int = 5,
-        keyword_weight: float = 0.4,
     ) -> list[dict]:
         """搜索记忆（keyword: BM25, hybrid: RRF 融合）"""
-        return self._search.search(query, mode, limit, keyword_weight)
+        return self._search.search(query, mode, limit)
 
     def get(self, memory_id: int) -> dict | None:
         """获取指定记忆"""

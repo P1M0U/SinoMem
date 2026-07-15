@@ -70,6 +70,10 @@ class Embedder:
         BGE 优先加载 model_quantized.onnx（~24MB），
         都不存在则回退到 model.onnx（fp32，较大）。
         """
+        import logging
+
+        _log = logging.getLogger(__name__)
+
         onnx_path = self.model_dir / "onnx"
 
         # 按优先级依次尝试
@@ -91,6 +95,10 @@ class Embedder:
                 "请下载模型到 {onnx_path}/ 目录"
             )
 
+        _log.info(
+            "正在加载嵌入模型 %s（首次加载可能耗时数秒）...",
+            model_file.name,
+        )
         self._session = ort.InferenceSession(
             str(model_file),
             providers=["CPUExecutionProvider"],
@@ -108,6 +116,10 @@ class Embedder:
         self._dim = self._session.get_outputs()[0].shape[-1]
         if not isinstance(self._dim, int):
             self._dim = 384  # 兜底
+
+        _log.info(
+            "嵌入模型加载完成 dim=%d type=%s", self._dim, self._model_type
+        )
 
     def _build_inputs(self, ids: list[int], mask: list[int]) -> dict:
         """根据 ONNX 模型实际输入签名构造推理输入 dict"""

@@ -47,14 +47,11 @@ def tokenize_list(text: str) -> list[str]:
 def tokenize_for_fts5(query: str) -> str:
     """将多关键词查询转为 FTS5 AND 语法
 
-    写入和查询用同一套管道（cut + bigram）确保 token 对齐，
-    过滤 >3 字的 token 避免长 token 在存储侧不一定存在时导致 false negative。
+    写入和查询用同一套管道（cut + bigram）确保 token 对齐。
     """
     expanded = _expand_bigrams(jieba.cut(query))
-    # 去重保序，过滤 >3 字的 token
-    words = list(
-        dict.fromkeys([w for w in expanded if w.strip() and len(w) <= 3])
-    )
+    # 去重保序（存储侧已同时写入完整词 + bigram，查询侧无需过滤长词）
+    words = list(dict.fromkeys([w for w in expanded if w.strip()]))
     if not words:
         # 兜底：全部被过滤了（如纯英文长词），退回到原始 cut
         words = [w for w in jieba.cut(query) if w.strip()]
