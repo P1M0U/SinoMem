@@ -5,6 +5,13 @@ from pathlib import Path
 
 import jieba
 
+# 将 jieba 缓存目录指向用户可写位置，避免多用户 /tmp 冲突
+# jieba 默认将缓存写入 tempfile.gettempdir()（通常为 /tmp），
+# 当多用户共享同一机器时，shutil.move 替换他人文件会触发 PermissionError
+_CACHE_DIR = Path.home() / ".cache" / "jieba"
+_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+jieba.dt.tmp_dir = str(_CACHE_DIR)
+
 # 加载自定义词典（如果存在）
 _DICT_PATH = Path(__file__).parent.parent.parent / "dicts" / "tech_terms.txt"
 if _DICT_PATH.exists():

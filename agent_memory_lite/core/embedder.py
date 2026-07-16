@@ -92,7 +92,12 @@ class Embedder:
         if model_file is None:
             raise FileNotFoundError(
                 f"ONNX 模型未找到: {onnx_path}\n"
-                "请下载模型到 {onnx_path}/ 目录"
+                f"请运行以下命令下载模型到 {onnx_path}/ 目录:\n"
+                "  pip install huggingface_hub\n"
+                '  python -c "from huggingface_hub import hf_hub_download; '
+                f"hf_hub_download('Xenova/bge-small-zh-v1.5', 'onnx/model_quantized.onnx', local_dir='{self.model_dir}'); "
+                f"hf_hub_download('Xenova/bge-small-zh-v1.5', 'tokenizer.json', local_dir='{self.model_dir}')\"\n"
+                "国内用户下载前请先设置: export HF_ENDPOINT=https://hf-mirror.com"
             )
 
         _log.info(
