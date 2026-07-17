@@ -94,7 +94,31 @@ for candidate in python3 python; do
 done
 
 if [ -z "$PYTHON" ]; then
-    echo -e "${RED}✗ 需要 Python >= 3.11，未找到。请先安装 Python 3.11+${NC}"
+    echo ""
+    echo -e "${RED}╔══════════════════════════════════════════╗${NC}"
+    echo -e "${RED}║  Python >= 3.11 未找到                   ║${NC}"
+    echo -e "${RED}╚══════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "  当前 Python 版本: $("python3" --version 2>/dev/null || echo "未安装")"
+    echo ""
+    echo -e "${BOLD}  原因${NC}：agent-memory-lite 使用了 Python 3.11 特性"
+    echo -e "        （datetime.UTC / PEP 615），无法降级运行。"
+    echo ""
+    echo -e "${BOLD}  请选择以下方式之一安装 Python 3.11+：${NC}"
+    echo ""
+    echo "  ─── Ubuntu / Debian ───"
+    echo "  sudo add-apt-repository -y ppa:deadsnakes/ppa"
+    echo "  sudo apt update && sudo apt install -y python3.11 python3.11-venv"
+    echo ""
+    echo "  ─── macOS ───"
+    echo "  brew install python@3.11"
+    echo ""
+    echo "  ─── 通用（pyenv）───"
+    echo "  curl https://pyenv.run | bash"
+    echo "  pyenv install 3.11"
+    echo "  pyenv global 3.11"
+    echo ""
+    echo "  安装完成后重新运行本脚本即可。"
     exit 1
 fi
 echo -e "  ${GREEN}✓${NC} Python $("$PYTHON" --version)"
@@ -105,6 +129,11 @@ if ! "$PYTHON" -m pip --version &>/dev/null; then
     exit 1
 fi
 echo -e "  ${GREEN}✓${NC} pip 可用"
+
+# 升级 pip，避免旧版与 setuptools-scm 不兼容导致 PEP 660 editable install 失败
+echo -e "  正在升级 pip..."
+"$PYTHON" -m pip install --quiet --upgrade pip 2>&1 | tail -1
+echo -e "  ${GREEN}✓${NC} pip 已升级到最新版"
 
 # git
 if ! command -v git &>/dev/null; then
@@ -217,19 +246,62 @@ echo -e "${BOLD}[5/5]${NC} 检查插件配置..."
 echo ""
 
 if [ -d "$HOME/.hermes" ] || [ -n "${HERMES_HOME:-}" ]; then
-    HERMES_PLUGIN_DIR="${HERMES_HOME:-$HOME/.hermes}/plugins"
+    HERMES_BASE="${HERMES_HOME:-$HOME/.hermes}"
+    HERMES_PLUGIN_DIR="$HERMES_BASE/plugins"
     echo -e "  ${GREEN}✓${NC} 检测到 Hermes 环境"
     echo ""
-    echo -e "  ${BOLD}Hermes 插件配置方法：${NC}"
-    echo "  ────────────────────────────────────────────"
-    echo "  方式 1 — 符号链接（推荐，跟随 git pull 自动更新）："
-    echo ""
-    echo -e "    ${GREEN}ln -s ${INSTALL_DIR}/hermes_plugin ${HERMES_PLUGIN_DIR}/agent-memory-lite${NC}"
-    echo ""
-    echo "  方式 2 — 复制（不随 git pull 更新）："
-    echo ""
-    echo "    cp -r ${INSTALL_DIR}/hermes_plugin ${HERMES_PLUGIN_DIR}/agent-memory-lite"
-    echo "  ────────────────────────────────────────────"
+
+    # 自动符号链接 hermes_plugin
+    PLUGIN_LINK="$HERMES_PLUGIN_DIR/agent-memory-lite"
+    if [ -L "$PLUGIN_LINK" ] || [ -d "$PLUGIN_LINK" ]; then
+        echo -e "  ${YELLOW}!${NC} Hermes 插件已存在，跳过链接"
+    else
+        mkdir -p "$HERMES_PLUGIN_DIR"
+        ln -s "$INSTALL_DIR/hermes_plugin" "$PLUGIN_LINK"
+        echo -e "  ${GREEN}✓${NC} 已链接 Hermes 插件 → ${PLUGIN_LINK}"
+    fi
+
+    # 自动安装 agent-memory-lite 到 Hermes venv
+    # （Hermes 插件在 Hermes 进程中运行，需要能 import agent_memory_lite）
+    HERMES_VENV=""
+    for venv_path in \
+        "$HERMES_BASE/hermes-agent/venv" \
+        "$HERMES_BASE/venv" \
+        "$HERMES_BASE/.venv"; do
+        if [ -f "$venv_path/bin/python" ]; then
+            HERMES_VENV="$venv_path"
+            break
+        fi
+    done
+
+    if [ -n "$HERMES_VENV" ]; then
+        HERMES_PYTHON="$HERMES_VENV/bin/python"
+        echo ""
+        echo -e "  ${BOLD}安装到 Hermes venv：${NC}"
+        echo "  ────────────────────────────────────────────"
+
+        # 先安装轻量依赖（jieba + tokenizers）
+        echo "  安装基础依赖..."
+        "$HERMES_PYTHON" -m pip install --quiet --upgrade pip 2>&1 | tail -1
+        "$HERMES_PYTHON" -m pip install --quiet jieba tokenizers 2>&1 | tail -3
+
+        # 安装 agent-memory-lite 包本身到 Hermes venv
+        echo "  安装 agent-memory-lite（可编辑模式）..."
+        "$HERMES_PYTHON" -m pip install --quiet -e "$INSTALL_DIR" 2>&1 | tail -3
+
+        if "$HERMES_PYTHON" -c "import agent_memory_lite" 2>/dev/null; then
+            echo -e "  ${GREEN}✓${NC} Hermes venv 配置完成（${HERMES_VENV}）"
+        else
+            echo -e "  ${YELLOW}!${NC} Hermes venv 安装验证失败，请手动执行："
+            echo "    ${HERMES_PYTHON} -m pip install -e ${INSTALL_DIR}"
+        fi
+        echo "  ────────────────────────────────────────────"
+    else
+        echo ""
+        echo -e "  ${YELLOW}!${NC} 未找到 Hermes venv，请手动安装依赖到 Hermes："
+        echo "    <hermes-venv>/bin/pip install jieba tokenizers"
+        echo "    <hermes-venv>/bin/pip install -e ${INSTALL_DIR}"
+    fi
 else
     echo -e "  ${BLUE}ℹ${NC} 未检测到 Hermes，跳过插件配置"
     echo "  （如果你使用 Hermes，请将 hermes_plugin/ 链接到 Hermes 插件目录）"

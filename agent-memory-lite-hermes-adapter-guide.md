@@ -18,40 +18,47 @@
 ## 前置条件
 
 1. **Hermes Agent 已安装**（v0.4+）
-2. **Agent-Memory-Lite 项目已部署**（路径：`~/Desktop/Agent-Memory-Lite/`）
+2. **Agent-Memory-Lite 已安装**（路径：`~/.local/share/agent-memory-lite/`）
 
 ---
 
 ## 安装步骤
 
-### 步骤 1：安装 Python 依赖到 Hermes venv
+> **💡 如果你使用了一键安装脚本（`install.sh`），以下步骤已自动完成，可直接跳到验证部分。**
+
+### 步骤 1：安装 Python 依赖和 agent-memory-lite 到 Hermes venv
 
 **⚠️ 关键步骤，跳过会导致适配器加载失败！**
 
+适配器在 Hermes 进程中运行，使用 Hermes 自己的 venv，需要将三个依赖装进去：
+
 ```bash
+# 先升级 pip（避免旧版与 setuptools-scm 不兼容）
+~/.hermes/hermes-agent/venv/bin/python -m pip install --upgrade pip
+
+# 安装轻量依赖
 ~/.hermes/hermes-agent/venv/bin/python -m pip install jieba tokenizers
+
+# 安装 agent-memory-lite 包本身（可编辑模式，git pull 即可更新）
+~/.hermes/hermes-agent/venv/bin/python -m pip install -e ~/.local/share/agent-memory-lite
 ```
 
-或使用 uv（推荐）：
-
-```bash
-uv pip install --python ~/.hermes/hermes-agent/venv/bin/python jieba tokenizers
-```
-
-**为什么需要这一步？**
-- Agent-Memory-Lite 依赖 jieba 做中文分词
-- 适配器在 Hermes 进程中运行，使用 Hermes 的 venv
-- 如果依赖缺失，`is_available()` 会抛出异常并返回 False
+**为什么需要安装 agent-memory-lite 本身？**
+- 适配器从 `agent_memory_lite.plugins.hermes.provider` 导入核心实现
+- 仅安装 jieba + tokenizers 不够，`is_available()` 中的 `find_spec("agent_memory_lite")` 会返回 None
+- 通过 `pip install -e` 安装后，`import agent_memory_lite` 才能在 Hermes venv 中正常工作
 
 ---
 
-### 步骤 2：复制适配器插件
+### 步骤 2：链接适配器插件
 
-适配器代码已内置在 Agent-Memory-Lite 项目的 `hermes_plugin/` 目录中，直接复制即可：
+适配器代码已内置在 Agent-Memory-Lite 项目的 `hermes_plugin/` 目录中：
 
 ```bash
-cp -r ~/Desktop/Agent-Memory-Lite/hermes_plugin/ ~/.hermes/plugins/agent-memory-lite/
+ln -s ~/.local/share/agent-memory-lite/hermes_plugin/ ~/.hermes/plugins/agent-memory-lite
 ```
+
+> 使用符号链接而非复制：`git pull` 更新项目后插件自动同步，无需再次操作。
 
 ---
 
@@ -134,11 +141,13 @@ sqlite3 ~/.agent-memory/memory.db "SELECT * FROM memories ORDER BY id DESC LIMIT
 Memory provider 'holographic' loaded (fallback)
 ```
 
-**原因：** `agent_memory_lite` 依赖未安装到 Hermes venv
+**原因：** agent-memory-lite 未安装到 Hermes venv
 
 **解决：**
 ```bash
-uv pip install --python ~/.hermes/hermes-agent/venv/bin/python jieba tokenizers
+~/.hermes/hermes-agent/venv/bin/python -m pip install --upgrade pip
+~/.hermes/hermes-agent/venv/bin/python -m pip install jieba tokenizers
+~/.hermes/hermes-agent/venv/bin/python -m pip install -e ~/.local/share/agent-memory-lite
 ```
 
 ---
@@ -150,17 +159,12 @@ uv pip install --python ~/.hermes/hermes-agent/venv/bin/python jieba tokenizers
 Failed to load provider: No module named 'agent_memory_lite'
 ```
 
-**原因：** agent_memory_lite 未正确安装到 Python 路径
+**原因：** agent_memory_lite 包未安装到 Hermes venv（这是最常见的问题）
 
-**解决：** 确保 agent_memory_lite 已安装：
+**解决：** 将 agent-memory-lite 安装到 Hermes venv：
 
 ```bash
-pip install -e ~/Desktop/Agent-Memory-Lite
-```
-
-或通过环境变量指定项目路径：
-```bash
-export PYTHONPATH=~/Desktop/Agent-Memory-Lite:$PYTHONPATH
+~/.hermes/hermes-agent/venv/bin/python -m pip install -e ~/.local/share/agent-memory-lite
 ```
 
 ---
@@ -213,8 +217,7 @@ Agent-Memory-Lite 默认已配置 WAL。
    ```
 2. 重建索引：
    ```bash
-   cd ~/Desktop/Agent-Memory-Lite
-   uv run python -m agent_memory_lite.entrypoints.cli reindex
+   aml reindex
    ```
 
 ---
@@ -244,7 +247,7 @@ Agent-Memory-Lite 默认已配置 WAL。
 │       └── __init__.py                        # 重导出入口
 └── ...
 
-~/Desktop/Agent-Memory-Lite/
+~/.local/share/agent-memory-lite/
 ├── agent_memory_lite/                         # 核心库
 │   └── plugins/hermes/
 │       └── provider.py                        # Hermes 适配器核心实现

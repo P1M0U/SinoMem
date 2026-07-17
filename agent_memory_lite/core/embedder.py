@@ -65,25 +65,44 @@ def ensure_model(
         )
         return False
 
-    # 检查镜像配置
-    endpoint = None
+    # 构建下载镜像列表：用户配置 > huggingface.co > hf-mirror.com 兜底
+    _MIRROR_FALLBACK = "https://hf-mirror.com"
+    endpoints = []  # None 表示默认 huggingface.co
     if "HF_ENDPOINT" in os.environ:
-        endpoint = os.environ["HF_ENDPOINT"]
-        _log.info("使用 HF 镜像: %s", endpoint)
+        endpoints.append(os.environ["HF_ENDPOINT"])
+        _log.info("使用 HF 镜像: %s", endpoints[0])
+    else:
+        endpoints.append(None)  # 默认 huggingface.co
+        endpoints.append(_MIRROR_FALLBACK)  # 国内镜像兜底
 
     _log.info("正在自动下载嵌入模型 %s → %s ...", repo, target_dir)
     success = True
     for filename in files:
-        try:
-            hf_hub_download(
-                repo_id=repo,
-                filename=filename,
-                local_dir=str(target_dir),
-                endpoint=endpoint,
-            )
+        downloaded = False
+        last_error = None
+        for endpoint in endpoints:
+            try:
+                hf_hub_download(
+                    repo_id=repo,
+                    filename=filename,
+                    local_dir=str(target_dir),
+                    endpoint=endpoint,
+                )
+                downloaded = True
+                break
+            except Exception as e:
+                last_error = e
+                if endpoint is not None:
+                    _log.debug(
+                        "  %s 从 %s 下载失败，尝试下一个镜像...",
+                        filename,
+                        endpoint,
+                    )
+                continue
+        if downloaded:
             _log.info("  ✓ %s", filename)
-        except Exception as e:
-            _log.error("  ✗ %s 下载失败: %s", filename, e)
+        else:
+            _log.error("  ✗ %s 下载失败: %s", filename, last_error)
             success = False
 
     return success
