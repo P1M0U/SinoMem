@@ -1,5 +1,9 @@
 """AutoGen memory_provider 组件 — 自动记忆同步
 
+⚠️ 状态: WIP — 尚未对接 AutoGen 的真正生命周期钩子。
+当前实现基于 BasePlugin 基类，用户需手动调用 query_memory/update_memory。
+欢迎贡献完整的 AutoGen memory_provider 集成方案。
+
 AutoGen 的 memory_provider 接口在每轮对话前后自动调用：
 - update_memory(): 对话后提取并存储记忆
 - query_memory(): 对话前检索相关记忆

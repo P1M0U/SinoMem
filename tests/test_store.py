@@ -2,17 +2,6 @@
 
 import pytest
 
-from agent_memory_lite.core.engine import MemoryEngine
-
-
-@pytest.fixture
-def engine(tmp_path):
-    """每个测试用例使用独立的临时数据库（无嵌入模型）"""
-    db_path = tmp_path / "test_store.db"
-    eng = MemoryEngine(db_path)
-    yield eng
-    eng.close()
-
 
 class TestStoreCRUD:
     def test_store_and_get(self, engine):

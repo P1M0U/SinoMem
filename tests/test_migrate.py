@@ -6,14 +6,6 @@ from agent_memory_lite.core.engine import MemoryEngine
 from agent_memory_lite.tools.migrate import migrate_memories
 
 
-@pytest.fixture
-def engine(tmp_path):
-    db_path = tmp_path / "test_migrate.db"
-    eng = MemoryEngine(db_path)
-    yield eng
-    eng.close()
-
-
 class TestMigrate:
     def test_migrate_empty_db(self, tmp_path):
         """无记忆时返回 migrated=0"""

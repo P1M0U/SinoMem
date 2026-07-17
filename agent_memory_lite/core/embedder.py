@@ -7,6 +7,7 @@
 自动检测模型类型，无需手动配置。
 """
 
+import os
 from pathlib import Path
 
 import numpy as np
@@ -14,6 +15,78 @@ import onnxruntime as ort
 from tokenizers import Tokenizer
 
 from .config import DEFAULT_MODEL_DIR
+
+# 默认模型仓库（Xenova 预转换 ONNX 格式）
+_DEFAULT_REPO = "Xenova/bge-small-zh-v1.5"
+_DEFAULT_FILES = ["onnx/model_quantized.onnx", "tokenizer.json"]
+
+
+def ensure_model(
+    model_dir: str | Path | None = None,
+    repo: str = _DEFAULT_REPO,
+    files: list[str] | None = None,
+) -> bool:
+    """确保 ONNX 模型已下载，缺少时尝试自动下载
+
+    Args:
+        model_dir: 模型存储目录
+        repo: HuggingFace 仓库名
+        files: 需要下载的文件列表
+
+    Returns:
+        True 表示模型已就绪，False 表示模型不可用
+    """
+    import logging
+
+    _log = logging.getLogger(__name__)
+
+    target_dir = Path(model_dir) if model_dir else DEFAULT_MODEL_DIR
+    onnx_dir = target_dir / "onnx"
+    tokenizer_path = target_dir / "tokenizer.json"
+    candidates = [
+        onnx_dir / "model_quint8_avx2.onnx",
+        onnx_dir / "model_quantized.onnx",
+        onnx_dir / "model.onnx",
+    ]
+
+    # 模型已存在，无需下载
+    if any(c.exists() for c in candidates) and tokenizer_path.exists():
+        return True
+
+    if files is None:
+        files = _DEFAULT_FILES
+
+    # 检查 huggingface_hub 是否可用
+    try:
+        from huggingface_hub import hf_hub_download
+    except ImportError:
+        _log.warning(
+            "自动下载模型需要 huggingface_hub，请先安装: pip install huggingface_hub"
+        )
+        return False
+
+    # 检查镜像配置
+    endpoint = None
+    if "HF_ENDPOINT" in os.environ:
+        endpoint = os.environ["HF_ENDPOINT"]
+        _log.info("使用 HF 镜像: %s", endpoint)
+
+    _log.info("正在自动下载嵌入模型 %s → %s ...", repo, target_dir)
+    success = True
+    for filename in files:
+        try:
+            hf_hub_download(
+                repo_id=repo,
+                filename=filename,
+                local_dir=str(target_dir),
+                endpoint=endpoint,
+            )
+            _log.info("  ✓ %s", filename)
+        except Exception as e:
+            _log.error("  ✗ %s 下载失败: %s", filename, e)
+            success = False
+
+    return success
 
 
 def _count_session_inputs(session: ort.InferenceSession) -> int:

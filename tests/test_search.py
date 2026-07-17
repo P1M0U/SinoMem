@@ -1,35 +1,5 @@
 """测试搜索层（关键词 / 语义 / 混合）"""
 
-import pytest
-
-from agent_memory_lite.core.engine import MemoryEngine
-
-
-@pytest.fixture
-def engine(tmp_path):
-    """纯 FTS5 引擎（无嵌入模型）"""
-    db_path = tmp_path / "test_search.db"
-    eng = MemoryEngine(db_path)
-    yield eng
-    eng.close()
-
-
-@pytest.fixture
-def engine_with_vec(tmp_path):
-    """带向量索引的引擎（用于语义/混合搜索测试）"""
-    try:
-        from agent_memory_lite.core.embedder import Embedder
-
-        embedder = Embedder()
-        # 主动触发模型加载（懒加载在 .dim 才真正执行）
-        _ = embedder.dim
-        db_path = tmp_path / "test_search_vec.db"
-        eng = MemoryEngine(db_path, embedder=embedder)
-        yield eng
-        eng.close()
-    except Exception:
-        pytest.skip("嵌入模型不可用，跳过向量测试")
-
 
 class TestKeywordSearch:
     def test_keyword_search_chinese(self, engine):

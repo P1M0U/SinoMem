@@ -3,13 +3,17 @@
 当 Claude Code 会话结束（用户退出或会话终止），自动将当前会话
 中有价值的信息存入长期记忆。
 
-配置方式（~/.claude/settings.json 或项目 .claude/settings.json）:
+配置方式：运行安装脚本自动配置
+    bash installers/install_claude_code.sh
+    bash installers/install_claude_code.sh --global   # 全局安装
+
+或手动添加 hooks 到 ~/.claude/settings.local.json 或项目 .claude/settings.local.json:
 
 {
   "hooks": {
     "Stop": [{
       "hooks": [{
-        "command": "python3 ~/.cli/agent-memory-lite/plugins/claude_code/persist_session.py"
+        "command": "python3 <项目路径>/agent_memory_lite/plugins/claude_code/persist_session.py"
       }]
     }]
   }

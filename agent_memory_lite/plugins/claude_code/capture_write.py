@@ -3,14 +3,18 @@
 当 Claude Code 执行 Write/Edit 操作时，检查是否写入了值得记忆的内容，
 自动存储到 Agent Memory Lite。
 
-配置方式（~/.claude/settings.json 或项目 .claude/settings.json）:
+配置方式：运行安装脚本自动配置
+    bash installers/install_claude_code.sh
+    bash installers/install_claude_code.sh --global   # 全局安装
+
+或手动添加 hooks 到 ~/.claude/settings.local.json 或项目 .claude/settings.local.json:
 
 {
   "hooks": {
     "PostToolUse": [{
       "matcher": "Write|Edit",
       "hooks": [{
-        "command": "python3 ~/.cli/agent-memory-lite/plugins/claude_code/capture_write.py"
+        "command": "python3 <项目路径>/agent_memory_lite/plugins/claude_code/capture_write.py"
       }]
     }]
   }

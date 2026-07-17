@@ -157,25 +157,16 @@ class TestTTL:
             db = str(Path(tmp) / "test.db")
             engine = MemoryEngine(db)
 
-            # 存入已过期的记忆，绕过 ttl 解析直接写 SQL
-            engine.conn.execute(
-                "INSERT INTO memories (content, category, expires_at) "
-                "VALUES (?, ?, datetime('now', '-1 day'))",
-                ("已过期的记忆", "general"),
+            # 使用 store_with_expiry 写入已过期的记忆
+            row_id = engine.store_with_expiry(
+                "已过期的记忆",
+                already_expired=True,
             )
-            row_id = engine.conn.execute(
-                "SELECT last_insert_rowid()"
-            ).fetchone()[0]
-            engine.conn.execute(
-                "INSERT INTO memories_fts (rowid, content, tags, category)"
-                " VALUES (?, ?, ?, ?)",
-                (row_id, "已过期的记忆", "[]", "general"),
-            )
-            engine.conn.commit()
 
             # 清理过期
             cleaned = engine.cleanup_expired()
             assert cleaned >= 1
+            assert row_id > 0
 
             engine.close()
 
@@ -183,11 +174,12 @@ class TestTTL:
 class TestConfig:
     """配置测试"""
 
-    def test_config_no_dead_keyword_weight(self):
-        """确认 DEFAULT_KEYWORD_WEIGHT 已移除"""
+    def test_config_no_dead_code(self):
+        """确认无用配置项已移除"""
         from agent_memory_lite.core import config
 
         assert not hasattr(config, "DEFAULT_KEYWORD_WEIGHT")
+        assert not hasattr(config, "DEFAULT_SEARCH_LIMIT")
 
 
 class TestSearch:

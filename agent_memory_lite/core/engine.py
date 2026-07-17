@@ -18,19 +18,21 @@ class MemoryEngine:
     def __init__(self, db_path: str | Path | None = None, embedder=None):
         self.db_path = Path(db_path) if db_path else DEFAULT_DB_PATH
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self.conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
-        self.conn.row_factory = sqlite3.Row
-        self.conn.execute("PRAGMA journal_mode=WAL")
-        self.conn.execute("PRAGMA busy_timeout=5000")
+        self._conn = sqlite3.connect(
+            str(self.db_path), check_same_thread=False
+        )
+        self._conn.row_factory = sqlite3.Row
+        self._conn.execute("PRAGMA journal_mode=WAL")
+        self._conn.execute("PRAGMA busy_timeout=5000")
         self._embedder = embedder
         self._vec_dim: int = 0
         self._init_schema()
         self._init_vec()
         # 运行迁移
-        run_migrations(self.conn)
+        run_migrations(self._conn)
 
-        self._store = MemoryStore(self.conn, embedder, self._vec_dim)
-        self._search = SearchEngine(self.conn, embedder, self._vec_dim)
+        self._store = MemoryStore(self._conn, embedder, self._vec_dim)
+        self._search = SearchEngine(self._conn, embedder, self._vec_dim)
 
         logger.info(
             "MemoryEngine 初始化完成 db=%s vec=%s schema_version=%d",
@@ -41,8 +43,8 @@ class MemoryEngine:
 
     def _init_schema(self):
         """初始化 FTS5 表结构"""
-        self.conn.executescript(SCHEMA_SQL)
-        self.conn.commit()
+        self._conn.executescript(SCHEMA_SQL)
+        self._conn.commit()
 
     def _init_vec(self):
         """初始化 sqlite-vec 向量表（如果 embedder 可用）"""
@@ -51,9 +53,9 @@ class MemoryEngine:
         try:
             import sqlite_vec
 
-            self.conn.enable_load_extension(True)
-            sqlite_vec.load(self.conn)
-            self.conn.enable_load_extension(False)
+            self._conn.enable_load_extension(True)
+            sqlite_vec.load(self._conn)
+            self._conn.enable_load_extension(False)
         except Exception:
             logger.warning("sqlite-vec 加载失败，跳过向量功能")
             return
@@ -66,8 +68,8 @@ class MemoryEngine:
             return
 
         try:
-            self.conn.execute(vec_table_sql(self._vec_dim))
-            self.conn.commit()
+            self._conn.execute(vec_table_sql(self._vec_dim))
+            self._conn.commit()
             logger.info("向量表创建成功 dim=%d", self._vec_dim)
         except Exception:
             logger.warning("向量表创建失败，降级为纯 FTS5")
@@ -223,8 +225,57 @@ class MemoryEngine:
 
     def close(self):
         """关闭数据库连接"""
-        self.conn.close()
+        self._conn.close()
         logger.info("MemoryEngine 已关闭")
+
+    def store_with_expiry(
+        self,
+        content: str,
+        already_expired: bool = True,
+        category: str = "general",
+        tags: list[str] | None = None,
+    ) -> int:
+        """写入指定过期状态的记忆（供测试使用）
+
+        绕过 TTL 解析和重复检查，仅应在测试场景中使用。
+
+        Args:
+            content: 记忆内容
+            already_expired: True 写入已过期的记忆（默认）
+            category: 分类
+            tags: 标签列表
+
+        Returns:
+            新记忆的 id
+        """
+        import json
+
+        if tags is None:
+            tags = []
+        tags_json = json.dumps(tags, ensure_ascii=False)
+
+        from .tokenizer import tokenize
+
+        # 使用参数化查询，根据 already_expired 构造过期时间
+        if already_expired:
+            expires_sql = "datetime('now', '-1 day')"
+        else:
+            expires_sql = "datetime('now', '+30 days')"
+
+        cursor = self._conn.execute(
+            "INSERT INTO memories (content, category, tags, expires_at) "
+            "VALUES (?, ?, ?, " + expires_sql + ")",
+            (content, category, tags_json),
+        )
+        row_id = cursor.lastrowid
+
+        self._conn.execute(
+            "INSERT INTO memories_fts (rowid, content, tags, category) "
+            "VALUES (?, ?, ?, ?)",
+            (row_id, tokenize(content), tags_json, category),
+        )
+        self._conn.commit()
+        return row_id
 
     def __enter__(self):
         return self
@@ -237,14 +288,18 @@ def create_engine(
     db_path: str | Path | None = None,
     model_dir: str | Path | None = None,
 ) -> MemoryEngine:
-    """统一创建 MemoryEngine，自动处理 Embedder 降级"""
+    """统一创建 MemoryEngine，自动处理 Embedder 降级与模型下载"""
     embedder = None
     try:
-        from .embedder import Embedder
+        from .embedder import Embedder, ensure_model
+
+        # 模型缺失时尝试自动下载
+        ensure_model(model_dir)
 
         embedder = Embedder(model_dir)
         _ = embedder.dim
-    except Exception:
+    except Exception as e:
+        logger.warning("嵌入模型加载失败，降级为纯 FTS5 搜索: %s", e)
         embedder = None
 
     try:

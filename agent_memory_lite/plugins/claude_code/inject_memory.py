@@ -3,13 +3,17 @@
 用户在 Claude Code 中输入 prompt 时，自动检索相关记忆并注入到 prompt 末尾。
 Agent 完全无感 —— 它看到的是已经增强过的 prompt。
 
-配置方式（~/.claude/settings.json 或项目 .claude/settings.json）:
+配置方式：运行安装脚本自动配置
+    bash installers/install_claude_code.sh
+    bash installers/install_claude_code.sh --global   # 全局安装
+
+或手动添加 hooks 到 ~/.claude/settings.local.json 或项目 .claude/settings.local.json:
 
 {
   "hooks": {
     "UserPromptSubmit": [{
       "hooks": [{
-        "command": "python3 ~/.cli/agent-memory-lite/plugins/claude_code/inject_memory.py"
+        "command": "python3 <项目路径>/agent_memory_lite/plugins/claude_code/inject_memory.py"
       }]
     }]
   }

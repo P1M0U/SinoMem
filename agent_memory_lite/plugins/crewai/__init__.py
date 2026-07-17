@@ -1,5 +1,9 @@
 """CrewAI Memory 组件 — 一行 import 实现自动记忆同步
 
+⚠️ 状态: WIP — 尚未对接 CrewAI 的 Memory 接口生命周期钩子。
+当前实现基于 BasePlugin 基类，用户需手动调用 search/save。
+欢迎贡献完整的 CrewAI Memory 集成方案。
+
 CrewAI 的 Memory 接口通过 crew.memory 属性注入，自动在每轮对话前后
 检索/存储记忆。
 

@@ -1,6 +1,5 @@
 """记忆 CRUD 存储层（TTL 过期 + 重要性评分 + 结构化日志）"""
 
-import contextlib
 import functools
 import json
 import sqlite3
@@ -8,6 +7,7 @@ import time
 from datetime import UTC, datetime
 
 from .logger import get_logger
+from .shared import _row_to_dict
 from .tokenizer import tokenize
 
 logger = get_logger(__name__)
@@ -58,28 +58,6 @@ def _iso_to_dt(ts: str | None):
         )
     except (ValueError, TypeError):
         return None
-
-
-def _row_to_dict(row, score: float | None = None) -> dict:
-    """将 sqlite3.Row 转为 dict，解析 tags JSON"""
-    d = dict(row)
-    if "tags" in d and d["tags"]:
-        with contextlib.suppress(json.JSONDecodeError, TypeError):
-            d["tags"] = json.loads(d["tags"])
-    if score is not None:
-        d["score"] = round(score, 4)
-    return d
-
-
-def update_access(conn: sqlite3.Connection, rows: list) -> None:
-    """批量更新访问计数（模块级函数，供 MemoryStore 和 SearchEngine 共用）"""
-    for row in rows:
-        conn.execute(
-            "UPDATE memories SET access_count = access_count + 1, "
-            "last_accessed = CURRENT_TIMESTAMP WHERE id = ?",
-            (row["id"],),
-        )
-    conn.commit()
 
 
 def _retry_on_lock(max_retries: int = 3, base_delay: float = 0.05):

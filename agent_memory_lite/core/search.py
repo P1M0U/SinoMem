@@ -4,7 +4,7 @@ import contextlib
 import sqlite3
 
 from .logger import get_logger, timed
-from .store import _row_to_dict, update_access
+from .shared import _row_to_dict, update_access
 from .tokenizer import tokenize_for_fts5
 
 logger = get_logger(__name__)
