@@ -58,7 +58,7 @@ uv run aml search "Docker"
 - **混合搜索** — 关键词 + 语义加权排序，兼顾精确和模糊
 - **MCP Server** — 标准协议，12 个工具，可接入任何支持 MCP 的 Agent
 - **多 Agent 自动同步插件** — Claude Code / LangChain / CrewAI / AutoGen / Hermes 开箱即用
-- **CLI 工具** — 12 个子命令（store / search / get / update / delete / list / stats / vacuum / clean / reindex / cleanup / migrate）
+- **CLI 工具** — 15 个子命令（store / search / get / update / delete / list / stats / vacuum / clean / reindex / cleanup / migrate / import / store-batch / search-batch）
 - **数据迁移** — 支持从 holographic memory 导入，支持为已有记忆补充向量
 - **自动去重** — 默认跳过重复内容
 - **数据库维护** — VACUUM 回收空间、reindex 重建索引、clean 批量删除

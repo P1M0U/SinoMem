@@ -58,7 +58,7 @@ uv run aml search "Docker"
 - **Hybrid Search** — Keyword + semantic weighted ranking, balancing precision and recall
 - **MCP Server** — Standard protocol, 12 tools, works with any MCP-compatible Agent
 - **Multi-Agent Auto-Sync Plugins** — Claude Code / LangChain / CrewAI / AutoGen / Hermes, all supported
-- **CLI Tool** — 12 subcommands (store / search / get / update / delete / list / stats / vacuum / clean / reindex / cleanup / migrate)
+- **CLI Tool** — 15 subcommands (store / search / get / update / delete / list / stats / vacuum / clean / reindex / cleanup / migrate / import / store-batch / search-batch)
 - **Data Migration** — Import from holographic memory, generate embeddings for existing memories
 - **Auto Deduplication** — Skips duplicate content by default
 - **Database Maintenance** — VACUUM, reindex, batch delete by category

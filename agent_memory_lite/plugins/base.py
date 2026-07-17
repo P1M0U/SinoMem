@@ -100,8 +100,9 @@ class BasePlugin:
         mode: str = "hybrid",
         limit: int = 3,
         prefix: str = "\n\n## 相关记忆\n",
-        format_memory: callable | None = None,
+        format_memory=None,
     ) -> str:
+        # 注: format_memory 类型为 Optional[Callable]，此处避免类体求值
         """将相关记忆上下文注入到用户 prompt 中
 
         Args:

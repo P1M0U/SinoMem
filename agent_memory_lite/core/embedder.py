@@ -122,6 +122,9 @@ class Embedder:
         if not isinstance(self._dim, int):
             self._dim = 384  # 兜底
 
+        # 缓存输入数量（session 创建后不会改变）
+        self._num_inputs = _count_session_inputs(self._session)
+
         _log.info(
             "嵌入模型加载完成 dim=%d type=%s", self._dim, self._model_type
         )
@@ -132,7 +135,7 @@ class Embedder:
             "input_ids": np.array([ids], dtype=np.int64),
             "attention_mask": np.array([mask], dtype=np.int64),
         }
-        if _count_session_inputs(self._session) == 3:
+        if self._num_inputs == 3:
             inputs["token_type_ids"] = np.array(
                 [[0] * len(ids)], dtype=np.int64
             )
@@ -146,7 +149,7 @@ class Embedder:
             "input_ids": np.array(batch_ids, dtype=np.int64),
             "attention_mask": np.array(batch_mask, dtype=np.int64),
         }
-        if _count_session_inputs(self._session) == 3:
+        if self._num_inputs == 3:
             inputs["token_type_ids"] = np.zeros(
                 (len(batch_ids), len(batch_ids[0])), dtype=np.int64
             )

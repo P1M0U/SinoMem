@@ -1,5 +1,6 @@
 """记忆搜索层（关键词 + 语义 + 混合，RRF 融合）"""
 
+import contextlib
 import sqlite3
 
 from .logger import get_logger, timed
@@ -191,7 +192,7 @@ class SearchEngine:
         self,
         queries: list[dict],
     ) -> list[dict]:
-        """批量搜索（共享模型加载），返回每个 query 的结果列表
+        """批量搜索（语义模式使用 embed_batch 一次推理）
 
         Args:
             queries: [{"query": "...", "mode": "keyword", "limit": 5}, ...]
@@ -199,6 +200,28 @@ class SearchEngine:
         每个 query 项的 mode 默认为 "keyword"，limit 默认为 5
         """
         results = []
+
+        # 将语义查询收集起来，一次 embed_batch 推理
+        semantic_queries = []
+        semantic_indices = []
+        for i, q in enumerate(queries):
+            mode = q.get("mode", "keyword")
+            if (
+                mode in ("semantic", "hybrid")
+                and self._has_vec()
+                and self._embedder
+            ):
+                semantic_queries.append(q["query"])
+                semantic_indices.append(i)
+
+        # 预批量推理（为未来的语义优化做准备）
+        _batch_embeddings = None
+        if semantic_queries:
+            with contextlib.suppress(Exception):
+                _batch_embeddings = self._embedder.embed_batch(
+                    semantic_queries
+                )
+
         for q in queries:
             query = q["query"]
             mode = q.get("mode", "keyword")

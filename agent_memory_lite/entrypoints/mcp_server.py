@@ -36,7 +36,7 @@ def _get_engine() -> MemoryEngine:
 def store_memory(
     content: str,
     category: str = "general",
-    tags: list[str] = None,
+    tags: list[str] | None = None,
     skip_duplicate: bool = True,
     ttl: str | None = None,
     importance: float = 0.5,
@@ -213,6 +213,21 @@ def memory_stats() -> dict:
     """查看记忆统计信息（含过期记忆数）"""
     engine = _get_engine()
     return engine.stats()
+
+
+@mcp.tool()
+def vacuum_memory() -> dict:
+    """回收已删除记忆占用的磁盘空间（VACUUM）"""
+    engine = _get_engine()
+    return engine.vacuum()
+
+
+@mcp.tool()
+def delete_all_memories() -> dict:
+    """清空所有记忆（⚠️ 不可逆操作）"""
+    engine = _get_engine()
+    count = engine.delete_all()
+    return {"status": "ok", "deleted": count}
 
 
 if __name__ == "__main__":

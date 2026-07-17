@@ -1,5 +1,5 @@
 name: agent-memory-lite
-version: 1.0.0
+version: 0.6.8
 description: "Agent-Memory-Lite: jieba Chinese FTS5 + ONNX semantic search memory provider"
 hooks:
   - on_memory_write

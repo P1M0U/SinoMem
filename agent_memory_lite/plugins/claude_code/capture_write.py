@@ -19,14 +19,17 @@
 
 import json
 import sys
-from pathlib import Path
 
-# 将项目根添加到 Python 路径
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-if str(_PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(_PROJECT_ROOT))
+# 优先从已安装的包导入，回退到 sys.path
+try:
+    from agent_memory_lite.plugins.base import BasePlugin
+except ImportError:
+    from pathlib import Path
 
-from agent_memory_lite.plugins.base import BasePlugin  # noqa: E402
+    _PROJECT_ROOT = Path(__file__).resolve().parents[3]
+    if str(_PROJECT_ROOT) not in sys.path:
+        sys.path.insert(0, str(_PROJECT_ROOT))
+    from agent_memory_lite.plugins.base import BasePlugin  # noqa: E402
 
 # 值得记忆的文件路径模式（相对于项目根）
 _MEMORY_WORTHY_PATTERNS = [

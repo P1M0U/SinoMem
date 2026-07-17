@@ -25,12 +25,11 @@ def migrate_memories(
         engine.close()
         raise RuntimeError("嵌入模型不可用，无法生成向量。请先下载模型。")
 
-    embedder = engine._embedder
-    if embedder is None:
+    current_dim = engine.embedder_dim
+    if current_dim is None:
         engine.close()
         raise RuntimeError("嵌入模型不可用，无法生成向量。请先下载模型。")
 
-    current_dim = embedder.dim
     existing_dim = engine.get_vec_dim()
     dim_changed = existing_dim is not None and existing_dim != current_dim
 
@@ -44,7 +43,7 @@ def migrate_memories(
 
     # --force：清空旧向量后重建
     if force and existing_dim is not None:
-        cleared = engine._store.clear_vectors()
+        cleared = engine.clear_vectors()
         if cleared > 0:
             click.echo(
                 f"force: cleared {cleared} vectors "
@@ -71,7 +70,7 @@ def migrate_memories(
     for bi, i in enumerate(range(0, len(pending), batch_size)):
         batch = pending[i : i + batch_size]
         contents = [m["content"] for m in batch]
-        embeddings = embedder.embed_batch(contents)
+        embeddings = engine.embed_batch(contents)
 
         for mem, embedding in zip(batch, embeddings, strict=True):
             embedding_bytes = np.array(embedding, dtype=np.float32).tobytes()

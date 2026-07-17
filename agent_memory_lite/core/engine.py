@@ -178,6 +178,31 @@ class MemoryEngine:
         """按分类批量删除记忆"""
         return self._store.delete_by_category(category)
 
+    def clear_vectors(self) -> int:
+        """清空所有向量（公共 API，供 migrate 等使用）"""
+        return self._store.clear_vectors()
+
+    def embed_batch(self, texts: list[str]) -> list[list[float]] | None:
+        """批量文本嵌入（公共 API，供 migrate 等使用）
+
+        Returns:
+            嵌入向量列表，如果嵌入模型不可用返回 None
+        """
+        if self._embedder is None:
+            return None
+        return self._embedder.embed_batch(texts)
+
+    @property
+    def embedder_dim(self) -> int | None:
+        """嵌入模型维度（None 表示不可用）"""
+        return self._vec_dim if self._has_vec() else None
+
+    def get_embedder_dim(self) -> int | None:
+        """获取嵌入模型维度（None 表示不可用）"""
+        if self._embedder is None:
+            return None
+        return self._vec_dim
+
     def delete_all(self) -> int:
         """清空所有记忆"""
         return self._store.delete_all()
@@ -224,8 +249,11 @@ def create_engine(
 
     try:
         return MemoryEngine(db_path, embedder=embedder)
-    except Exception:
+    except Exception as e:
         if embedder is not None:
+            logger.warning(
+                "创建引擎失败（embedder 相关），降级为纯 FTS5: %s", e
+            )
             embedder = None
             return MemoryEngine(db_path, embedder=embedder)
         raise

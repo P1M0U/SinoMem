@@ -28,13 +28,8 @@ class AMLAutoGenMemory(BasePlugin):
     - update_memory(): 存储新记忆
     """
 
-    def __init__(
-        self,
-        db_path=None,
-        max_context_tokens: int = 500,
-    ):
+    def __init__(self, db_path=None):
         super().__init__(db_path=db_path)
-        self.max_context_tokens = max_context_tokens
 
     def query_memory(
         self,
@@ -103,5 +98,6 @@ class AMLAutoGenMemory(BasePlugin):
             )
 
     def clear_memory(self) -> None:
-        """清空记忆（AutoGen 可能调用）"""
-        pass
+        """清空记忆（依赖 MemoryEngine.delete_all()）"""
+        engine = self._get_engine()
+        engine.delete_all()

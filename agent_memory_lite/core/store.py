@@ -454,6 +454,7 @@ class MemoryStore:
         m = re.search(r"float\[(\d+)\]", row["sql"])
         return int(m.group(1)) if m else None
 
+    @_retry_on_lock()
     def clear_vectors(self) -> int:
         """清空所有向量（用于强制重建）"""
         if not self._has_vec():
@@ -465,6 +466,7 @@ class MemoryStore:
         self.conn.commit()
         return count
 
+    @_retry_on_lock()
     def add_vector(self, memory_id: int, embedding_bytes: bytes) -> None:
         """为已有记忆添加向量"""
         if not self._has_vec():
@@ -475,6 +477,7 @@ class MemoryStore:
         )
         self.conn.commit()
 
+    @_retry_on_lock(max_retries=3, base_delay=0.5)
     def vacuum(self) -> dict:
         """回收已删除空间，返回数据库文件大小（字节）变化"""
         import os
@@ -503,6 +506,7 @@ class MemoryStore:
         )
         return result
 
+    @_retry_on_lock()
     def delete_by_category(self, category: str) -> int:
         """按分类批量删除记忆，返回删除条数"""
         ids = [
@@ -531,6 +535,7 @@ class MemoryStore:
         logger.info("按分类删除: %s → %d 条", category, len(ids))
         return len(ids)
 
+    @_retry_on_lock()
     def delete_all(self) -> int:
         """清空所有记忆"""
         count = self.conn.execute("SELECT COUNT(*) FROM memories").fetchone()[
@@ -632,20 +637,18 @@ class MemoryStore:
                 for _, p in new_items
             ]
 
-            # 获取插入前的最大 id，用于反推新 id 区间
-            max_before = self.conn.execute(
-                "SELECT COALESCE(MAX(id), 0) FROM memories"
-            ).fetchone()[0]
-
             self.conn.executemany(
                 "INSERT INTO memories (content, category, tags, "
                 "importance, expires_at) VALUES (?, ?, ?, ?, ?)",
                 main_rows,
             )
 
-            # 反推新 id（SQLite 自增序列连续，事务内安全）
+            # 用 last_insert_rowid 反推新 id（避免 SELECT MAX 竞争）
             new_count = len(new_items)
-            new_ids = list(range(max_before + 1, max_before + 1 + new_count))
+            last_id = self.conn.execute(
+                "SELECT last_insert_rowid()"
+            ).fetchone()[0]
+            new_ids = list(range(last_id - new_count + 1, last_id + 1))
 
             # 回填占位
             for j, (orig_idx, _) in enumerate(new_items):
@@ -693,6 +696,7 @@ class MemoryStore:
                 len(processed) - new_count,
             )
         else:
+            self.conn.commit()
             logger.info("批量存储完成: 全部 %d 条已存在，跳过", len(processed))
 
         return ids

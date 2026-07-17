@@ -9,7 +9,9 @@ import click
 from ..core.engine import MemoryEngine
 
 
-def import_from_holographic(source=None, db_path=None, dry_run=False) -> dict:
+def import_from_holographic(
+    source=None, db_path=None, dry_run=False, no_embed=False
+) -> dict:
     """从 holographic memory 导入记忆（纯业务逻辑）
 
     Returns:
@@ -37,7 +39,12 @@ def import_from_holographic(source=None, db_path=None, dry_run=False) -> dict:
         return {"imported": 0, "skipped": 0, "total": total}
 
     # 写入 Agent Memory Lite
-    engine = MemoryEngine(db_path)
+    if no_embed:
+        engine = MemoryEngine(db_path)
+    else:
+        from ..core.engine import create_engine
+
+        engine = create_engine(db_path)
     imported = 0
     skipped = 0
 

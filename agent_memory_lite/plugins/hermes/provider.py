@@ -7,18 +7,24 @@
 - 支持 jieba 中文分词 + FTS5 搜索 + ONNX 语义搜索
 """
 
+import contextvars
 import importlib
+import importlib.util  # 显式导入子模块
 import logging
 import os
-import threading
 from pathlib import Path
 from typing import Any
 
-# Hermes 运行时依赖（仅在 Hermes 环境中可用）
-from agent.memory_provider import MemoryProvider
-from tools.registry import tool_error
+# 防递归写入标记（ContextVar 替代 threading.current_thread() 属性）
+_writing_flag: contextvars.ContextVar[bool] = contextvars.ContextVar(
+    "_aml_writing", default=False
+)
 
-from ...core.engine import create_engine as _create_engine
+# Hermes 运行时依赖（仅在 Hermes 环境中可用）
+from agent.memory_provider import MemoryProvider  # noqa: E402
+from tools.registry import tool_error  # noqa: E402
+
+from ...core.engine import create_engine as _create_engine  # noqa: E402
 
 # ── 路径配置 ──
 
@@ -156,6 +162,18 @@ class AgentMemoryLiteProvider(MemoryProvider):
                             "items": {"type": "string"},
                             "description": "标签列表",
                         },
+                        "ttl": {
+                            "type": "string",
+                            "description": (
+                                "过期时间，如 30d / 24h / 7d12h"
+                                "（不填永不过期）"
+                            ),
+                        },
+                        "importance": {
+                            "type": "number",
+                            "description": "重要性评分 0.0~1.0（默认 0.5）",
+                            "default": 0.5,
+                        },
                     },
                     "required": ["content"],
                 },
@@ -204,6 +222,8 @@ class AgentMemoryLiteProvider(MemoryProvider):
                     content=arguments["content"],
                     category=arguments.get("category", "general"),
                     tags=arguments.get("tags"),
+                    ttl=arguments.get("ttl"),
+                    importance=arguments.get("importance", 0.5),
                 )
                 return json.dumps(result, ensure_ascii=False, default=str)
 
@@ -254,14 +274,12 @@ class AgentMemoryLiteProvider(MemoryProvider):
         if self._skip_writes:
             return
 
-        # 避免递归：如果当前写入来自 agent-memory-lite 工具，跳过
-        if getattr(
-            threading.current_thread(), "_agent_memory_lite_writing", False
-        ):
+        # 避免递归：ContextVar 保证线程/协程安全
+        if _writing_flag.get():
             return
 
         try:
-            threading.current_thread()._agent_memory_lite_writing = True
+            _writing_flag.set(True)
             self._logger.debug(f"on_memory_write: {action} {target}")
 
             if action in ("add", "replace") and content:
@@ -284,7 +302,7 @@ class AgentMemoryLiteProvider(MemoryProvider):
         except Exception as e:
             self._logger.warning(f"on_memory_write 同步失败: {e}")
         finally:
-            threading.current_thread()._agent_memory_lite_writing = False
+            _writing_flag.set(False)
 
     def sync_turn(self, *args, **kwargs) -> None:
         """回合结束同步（非阻塞）

@@ -97,9 +97,9 @@ class AMLMemory(BasePlugin):
             )
 
     def clear(self) -> None:
-        """清空记忆（LangChain 要求实现）"""
-        # 本组件不负责清空，由 MemoryEngine.delete_all() 处理
-        pass
+        """清空所有记忆"""
+        engine = self._get_engine()
+        engine.delete_all()
 
 
 class AMLLangChainChatMemory(AMLMemory):
