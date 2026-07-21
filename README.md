@@ -323,7 +323,7 @@ sinomem stats
 sinomem list
 
 # 回收已删除的磁盘空间
-aml vacuum
+sinomem vacuum
 ```
 
 ### MCP Server（Agent 自动调用）
@@ -349,20 +349,20 @@ aml vacuum
 
 ```bash
 # 从 holographic memory 导入
-aml import
+sinomem import
 
 # 预览（不实际写入）
-aml import --dry-run
+sinomem import --dry-run
 
 # 为已有记忆生成向量嵌入
-aml migrate
+sinomem migrate
 ```
 
 ### 数据库维护
 
 ```bash
 # 回收已删除记忆占用的磁盘空间
-aml vacuum
+sinomem vacuum
 ```
 
 大量删除记忆后，SQLite 不会自动回收空间。`vacuum` 命令会重建数据库文件，释放已删除的磁盘空间。

@@ -217,7 +217,7 @@ SinoMem 默认已配置 WAL。
    ```
 2. 重建索引：
    ```bash
-   aml reindex
+   sinomem reindex
    ```
 
 ---
@@ -303,7 +303,7 @@ Hermes Agent
     ↓
 memory_store 工具调用
     ↓
-AgentMemoryLiteProvider.handle_tool_call()
+SinoMemProvider.handle_tool_call()
     ↓
 MemoryEngine.store()  ←──── 直接调用（进程内）
     ↓

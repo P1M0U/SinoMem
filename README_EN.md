@@ -315,7 +315,7 @@ sinomem stats
 sinomem list
 
 # Reclaim disk space after deletes
-aml vacuum
+sinomem vacuum
 ```
 
 ### MCP Server (Agent auto-calls)
@@ -341,20 +341,20 @@ Once configured, the Agent can call these 12 tools directly:
 
 ```bash
 # Import from holographic memory
-aml import
+sinomem import
 
 # Preview (dry run)
-aml import --dry-run
+sinomem import --dry-run
 
 # Generate vector embeddings for existing memories
-aml migrate
+sinomem migrate
 ```
 
 ### Database Maintenance
 
 ```bash
 # Reclaim disk space from deleted memories
-aml vacuum
+sinomem vacuum
 ```
 
 After heavy deletions, SQLite does not automatically reclaim disk space. The `vacuum` command rebuilds the database file to free space.

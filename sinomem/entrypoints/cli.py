@@ -321,7 +321,7 @@ def store_batch_cmd(ctx, json_file, allow_duplicate):
 def search_batch_cmd(ctx, queries, mode, limit):
     """批量搜索多个关键词
 
-    示例: uv run aml search-batch "飞书" "Docker" "Python" -m keyword
+    示例: uv run sinomem search-batch "飞书" "Docker" "Python" -m keyword
     """
     if not queries:
         click.echo("(no queries)")
