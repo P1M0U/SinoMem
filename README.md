@@ -1,4 +1,4 @@
-# Agent Memory Lite
+# SinoMem
 
 [English](README_EN.md) | 中文
 
@@ -22,19 +22,19 @@
 
 ```bash
 # 国内用户（Gitee，推荐）
-curl -fsSL https://gitee.com/P1M0U/Agent-Memory-Lite/raw/main/install.sh | bash
+curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/install.sh | bash
 
 # 或 GitHub 用户
-curl -fsSL https://github.com/P1M0U/Agent-Memory-Lite/raw/main/install.sh | bash -s -- --mirror github
+curl -fsSL https://github.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --mirror github
 
 # 安装后打开新终端，即可使用：
-aml store "用户偏好使用 Docker 部署" -c user_pref
-aml search "Docker"
+sinomem store "用户偏好使用 Docker 部署" -c user_pref
+sinomem search "Docker"
 # 输出: #1  user_pref  score=0.2
 #        用户偏好使用 Docker 部署
 ```
 
-> 安装到 `~/.local/share/agent-memory-lite/`，不会污染 Desktop 目录。安装后可直接使用 `aml` 命令。
+> 安装到 `~/.local/share/sinomem/`，不会污染 Desktop 目录。安装后可直接使用 `sinomem` 命令。
 
 ## 适用场景
 
@@ -44,9 +44,9 @@ aml search "Docker"
 - 💰 不想为 Embedding API 付费的团队（本地 ONNX 推理）
 - 🔗 多个 AI 工具之间共享同一份长期记忆
 
-## 为什么选择 Agent Memory Lite？
+## 为什么选择 SinoMem？
 
-| 对比维度 | Agent Memory Lite | Mem0 | 内置记忆 |
+| 对比维度 | SinoMem | Mem0 | 内置记忆 |
 |---------|-------------------|------|---------|
 | 中文分词 | ✅ jieba 定制 | 默认分词 | 默认分词 |
 | 本地部署 | ✅ SQLite 单文件 | ❌ 需 API | ✅ 绑定框架 |
@@ -75,7 +75,7 @@ aml search "Docker"
 ## 项目结构
 
 ```
-agent_memory_lite/        # 核心记忆引擎
+sinomem/        # 核心记忆引擎
 ├── core/                 # 存储、搜索、分词、嵌入
 ├── dicts/                # 自定义 jieba 词典
 ├── entrypoints/          # CLI 和 MCP Server
@@ -101,14 +101,14 @@ install.sh                # 一键安装脚本
 
 复制以下内容发给你的 AI Agent，它会自动完成安装。
 
-> **💡 如果你使用的是 Hermes Agent**，推荐通过 **Memory Provider 插件方式**安装，可获得更好的集成体验（自动同步、进程内调用、工具去重）。详见 [Hermes Memory Provider 适配器安装指南](agent-memory-lite-hermes-adapter-guide.md)。
+> **💡 如果你使用的是 Hermes Agent**，推荐通过 **Memory Provider 插件方式**安装，可获得更好的集成体验（自动同步、进程内调用、工具去重）。详见 [Hermes Memory Provider 适配器安装指南](sinomem-hermes-adapter-guide.md)。
 
 ### 方式一：一键脚本（推荐）
 
 ```
-请帮我安装 Agent Memory Lite 记忆系统，执行以下命令：
+请帮我安装 SinoMem 记忆系统，执行以下命令：
 
-curl -fsSL https://gitee.com/P1M0U/Agent-Memory-Lite/raw/main/install.sh | bash -s -- --with-embedding
+curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --with-embedding
 
 安装后告诉我结果。
 ```
@@ -116,15 +116,15 @@ curl -fsSL https://gitee.com/P1M0U/Agent-Memory-Lite/raw/main/install.sh | bash 
 ### 方式二：从 Gitee 安装（国内更快）
 
 ```
-请帮我安装 Agent Memory Lite 记忆系统，步骤如下：
+请帮我安装 SinoMem 记忆系统，步骤如下：
 
 1. 克隆仓库并安装
-   git clone --depth 1 https://gitee.com/P1M0U/Agent-Memory-Lite.git ~/.local/share/agent-memory-lite
-   cd ~/.local/share/agent-memory-lite
+   git clone --depth 1 https://gitee.com/P1M0U/SinoMem.git ~/.local/share/sinomem
+   cd ~/.local/share/sinomem
    pip install -e .
 
 2. 验证安装是否成功
-   python -c "from agent_memory_lite.core.engine import MemoryEngine; print('ok')"
+   python -c "from sinomem.core.engine import MemoryEngine; print('ok')"
 
 3. 询问用户是否需要安装嵌入模型（用于语义搜索），给出以下选项让用户选择：
    — A. 不安装（默认）— 跳过此步，语义搜索自动降级为关键词搜索
@@ -132,19 +132,19 @@ curl -fsSL https://gitee.com/P1M0U/Agent-Memory-Lite/raw/main/install.sh | bash 
 
 4. 如果用户选择 B，执行 pip install -e ".[embedding]" 安装依赖。
    然后询问是否需要自动下载 ONNX 模型（约 24MB），如果需要则运行：
-   python -c "from agent_memory_lite.core.embedder import ensure_model; print('ok' if ensure_model() else 'download failed')"
+   python -c "from sinomem.core.embedder import ensure_model; print('ok' if ensure_model() else 'download failed')"
 
 5. 询问用户选择安装方式，给出以下选项：
-   — A. Hermes Memory Provider 插件方式（推荐）— 执行 `ln -s ~/.local/share/agent-memory-lite/hermes_plugin/ ~/.hermes/plugins/agent-memory-lite`
+   — A. Hermes Memory Provider 插件方式（推荐）— 执行 `ln -s ~/.local/share/sinomem/hermes_plugin/ ~/.hermes/plugins/sinomem`
    — B. MCP Server 方式 — 继续执行以下步骤 6-7
 
 6. （仅当用户选择 MCP Server 方式时）把 MCP Server 配置写入 ~/.hermes/config.yaml 的 mcp_servers 段：
-   agent-memory-lite:
+   sinomem:
      args: []
-     command: python -m agent_memory_lite.entrypoints.mcp_server
+     command: python -m sinomem.entrypoints.mcp_server
 
-7. 设置 AML_HOME 环境变量，追加到 ~/.bashrc 或 ~/.zshrc：
-   export AML_HOME="$HOME/.local/share/agent-memory-lite"
+7. 设置 SINOMEM_HOME 环境变量，追加到 ~/.bashrc 或 ~/.zshrc：
+   export SINOMEM_HOME="$HOME/.local/share/sinomem"
 
 完成后告诉我安装结果。
 ```
@@ -152,15 +152,15 @@ curl -fsSL https://gitee.com/P1M0U/Agent-Memory-Lite/raw/main/install.sh | bash 
 ### 方式三：从 GitHub 安装
 
 ```
-请帮我安装 Agent Memory Lite 记忆系统，步骤如下：
+请帮我安装 SinoMem 记忆系统，步骤如下：
 
 1. 克隆仓库并安装
-   git clone --depth 1 https://github.com/P1M0U/Agent-Memory-Lite.git ~/.local/share/agent-memory-lite
-   cd ~/.local/share/agent-memory-lite
+   git clone --depth 1 https://github.com/P1M0U/SinoMem.git ~/.local/share/sinomem
+   cd ~/.local/share/sinomem
    pip install -e .
 
 2. 验证安装是否成功
-   python -c "from agent_memory_lite.core.engine import MemoryEngine; print('ok')"
+   python -c "from sinomem.core.engine import MemoryEngine; print('ok')"
 
 3. 询问用户是否需要安装嵌入模型（用于语义搜索），给出以下选项让用户选择：
    — A. 不安装（默认）— 跳过此步，语义搜索自动降级为关键词搜索
@@ -168,19 +168,19 @@ curl -fsSL https://gitee.com/P1M0U/Agent-Memory-Lite/raw/main/install.sh | bash 
 
 4. 如果用户选择 B，执行 pip install -e ".[embedding]" 安装依赖。
    然后询问是否需要自动下载 ONNX 模型（约 24MB），如果需要则运行：
-   python -c "from agent_memory_lite.core.embedder import ensure_model; print('ok' if ensure_model() else 'download failed')"
+   python -c "from sinomem.core.embedder import ensure_model; print('ok' if ensure_model() else 'download failed')"
 
 5. 询问用户选择安装方式，给出以下选项：
-   — A. Hermes Memory Provider 插件方式（推荐）— 执行 `ln -s ~/.local/share/agent-memory-lite/hermes_plugin/ ~/.hermes/plugins/agent-memory-lite`
+   — A. Hermes Memory Provider 插件方式（推荐）— 执行 `ln -s ~/.local/share/sinomem/hermes_plugin/ ~/.hermes/plugins/sinomem`
    — B. MCP Server 方式 — 继续执行以下步骤 6-7
 
 6. （仅当用户选择 MCP Server 方式时）把 MCP Server 配置写入 ~/.hermes/config.yaml 的 mcp_servers 段：
-   agent-memory-lite:
+   sinomem:
      args: []
-     command: python -m agent_memory_lite.entrypoints.mcp_server
+     command: python -m sinomem.entrypoints.mcp_server
 
-7. 设置 AML_HOME 环境变量，追加到 ~/.bashrc 或 ~/.zshrc：
-   export AML_HOME="$HOME/.local/share/agent-memory-lite"
+7. 设置 SINOMEM_HOME 环境变量，追加到 ~/.bashrc 或 ~/.zshrc：
+   export SINOMEM_HOME="$HOME/.local/share/sinomem"
 
 完成后告诉我安装结果。
 ```
@@ -189,7 +189,7 @@ curl -fsSL https://gitee.com/P1M0U/Agent-Memory-Lite/raw/main/install.sh | bash 
 
 ## 多 Agent 自动记忆同步（插件系统）
 
-除了 MCP Server 的主动调用模式，Agent Memory Lite 还提供了**自动同步插件**——Agent 无需显式调用记忆工具即可自动管理长期记忆。
+除了 MCP Server 的主动调用模式，SinoMem 还提供了**自动同步插件**——Agent 无需显式调用记忆工具即可自动管理长期记忆。
 
 ### Claude Code（一键安装）
 
@@ -202,7 +202,7 @@ bash installers/install_claude_code.sh
 ### LangChain（一行接入）
 
 ```python
-from agent_memory_lite.plugins.langchain import AMLMemory
+from sinomem.plugins.langchain import AMLMemory
 
 agent = create_react_agent(llm, tools, memory=AMLMemory())
 ```
@@ -210,7 +210,7 @@ agent = create_react_agent(llm, tools, memory=AMLMemory())
 ### CrewAI（一行接入）
 
 ```python
-from agent_memory_lite.plugins.crewai import AMLCrewMemory
+from sinomem.plugins.crewai import AMLCrewMemory
 
 crew = Crew(agents=[...], tasks=[...], memory=AMLCrewMemory())
 ```
@@ -218,7 +218,7 @@ crew = Crew(agents=[...], tasks=[...], memory=AMLCrewMemory())
 ### AutoGen（一行接入）
 
 ```python
-from agent_memory_lite.plugins.autogen import AMLAutoGenMemory
+from sinomem.plugins.autogen import AMLAutoGenMemory
 
 assistant = AssistantAgent(name="agent", memory_provider=AMLAutoGenMemory())
 ```
@@ -226,7 +226,7 @@ assistant = AssistantAgent(name="agent", memory_provider=AMLAutoGenMemory())
 ### 通用 Python API
 
 ```python
-from agent_memory_lite.plugins import create_plugin
+from sinomem.plugins import create_plugin
 
 plugin = create_plugin()
 plugin.auto_store("用户喜欢飞书")
@@ -239,16 +239,16 @@ results = plugin.auto_search("协作工具")
 
 ```bash
 # 国内用户（Gitee）
-curl -fsSL https://gitee.com/P1M0U/Agent-Memory-Lite/raw/main/install.sh | bash
+curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/install.sh | bash
 
 # GitHub 用户
-curl -fsSL https://github.com/P1M0U/Agent-Memory-Lite/raw/main/install.sh | bash -s -- --mirror github
+curl -fsSL https://github.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --mirror github
 
 # 含语义搜索的完整安装
-curl -fsSL https://gitee.com/P1M0U/Agent-Memory-Lite/raw/main/install.sh | bash -s -- --with-embedding
+curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --with-embedding
 ```
 
-> 如需手动安装，可克隆仓库后执行 `pip install -e .`。仓库默认安装到 `~/.local/share/agent-memory-lite/`。
+> 如需手动安装，可克隆仓库后执行 `pip install -e .`。仓库默认安装到 `~/.local/share/sinomem/`。
 
 ## 下载嵌入模型（可选，用于语义搜索）
 
@@ -290,9 +290,9 @@ hf_hub_download('Xenova/bge-small-zh-v1.5', 'tokenizer.json', local_dir='models/
 在 `~/.hermes/config.yaml` 的 `mcp_servers:` 下添加：
 
 ```yaml
-  agent-memory-lite:
+  sinomem:
     args: []
-    command: python -m agent_memory_lite.entrypoints.mcp_server
+    command: python -m sinomem.entrypoints.mcp_server
 ```
 
 重启 Hermes 后生效。
@@ -305,22 +305,22 @@ hf_hub_download('Xenova/bge-small-zh-v1.5', 'tokenizer.json', local_dir='models/
 
 ```bash
 # 存储记忆
-aml store "用户偏好飞书发送文件" -c user_pref -t "飞书"
+sinomem store "用户偏好飞书发送文件" -c user_pref -t "飞书"
 
 # 关键词搜索
-aml search "飞书"
+sinomem search "飞书"
 
 # 语义搜索（需安装 embedding 依赖和模型）
-aml search "怎么给用户传东西" -m semantic
+sinomem search "怎么给用户传东西" -m semantic
 
 # 混合搜索（推荐）
-aml search "MCP协议" -m hybrid
+sinomem search "MCP协议" -m hybrid
 
 # 查看统计
-aml stats
+sinomem stats
 
 # 列出所有记忆
-aml list
+sinomem list
 
 # 回收已删除的磁盘空间
 aml vacuum
@@ -388,5 +388,5 @@ Copyright © 2026 [P1M0U](https://github.com/P1M0U)
 ## 联系作者
 
 - 电子邮箱：[p1m0u@foxmail.com](mailto:p1m0u@foxmail.com)
-- GitHub：[https://github.com/P1M0U/Agent-Memory-Lite](https://github.com/P1M0U/Agent-Memory-Lite)
-- Gitee：[https://gitee.com/P1M0U/Agent-Memory-Lite](https://gitee.com/P1M0U/Agent-Memory-Lite)
+- GitHub：[https://github.com/P1M0U/SinoMem](https://github.com/P1M0U/SinoMem)
+- Gitee：[https://gitee.com/P1M0U/SinoMem](https://gitee.com/P1M0U/SinoMem)

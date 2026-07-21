@@ -4,7 +4,7 @@ import sqlite3
 
 import pytest
 
-from agent_memory_lite.tools.import_holographic import import_from_holographic
+from sinomem.tools.import_holographic import import_from_holographic
 
 
 @pytest.fixture

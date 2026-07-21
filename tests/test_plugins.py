@@ -9,7 +9,7 @@ class TestBasePlugin:
 
     def test_create_plugin(self):
         """create_plugin 工厂函数"""
-        from agent_memory_lite.plugins import create_plugin
+        from sinomem.plugins import create_plugin
 
         with tempfile.TemporaryDirectory() as tmp:
             db = Path(tmp) / "test.db"
@@ -20,7 +20,7 @@ class TestBasePlugin:
 
     def test_auto_store_and_search(self):
         """auto_store 存储后 auto_search 能找到"""
-        from agent_memory_lite.plugins import create_plugin
+        from sinomem.plugins import create_plugin
 
         with tempfile.TemporaryDirectory() as tmp:
             db = Path(tmp) / "test.db"
@@ -39,7 +39,7 @@ class TestBasePlugin:
 
     def test_auto_store_dedup(self):
         """auto_store 默认去重"""
-        from agent_memory_lite.plugins import create_plugin
+        from sinomem.plugins import create_plugin
 
         with tempfile.TemporaryDirectory() as tmp:
             db = Path(tmp) / "test.db"
@@ -53,7 +53,7 @@ class TestBasePlugin:
 
     def test_inject_context(self):
         """inject_context 将记忆注入到 prompt"""
-        from agent_memory_lite.plugins import create_plugin
+        from sinomem.plugins import create_plugin
 
         with tempfile.TemporaryDirectory() as tmp:
             db = Path(tmp) / "test.db"
@@ -70,7 +70,7 @@ class TestBasePlugin:
 
     def test_empty_search_returns_empty(self):
         """空数据库搜索返回空列表"""
-        from agent_memory_lite.plugins import create_plugin
+        from sinomem.plugins import create_plugin
 
         with tempfile.TemporaryDirectory() as tmp:
             db = Path(tmp) / "test.db"
@@ -85,7 +85,7 @@ class TestTokenizer:
 
     def test_tokenize_long_chinese(self):
         """四字及以上中文词不被过滤"""
-        from agent_memory_lite.core.tokenizer import (
+        from sinomem.core.tokenizer import (
             tokenize,
             tokenize_for_fts5,
         )
@@ -105,7 +105,7 @@ class TestTokenizer:
 
     def test_tokenize_mixed_content(self):
         """混合中英文分词"""
-        from agent_memory_lite.core.tokenizer import tokenize
+        from sinomem.core.tokenizer import tokenize
 
         text = "用户使用 Docker 部署 Python 应用"
         result = tokenize(text)
@@ -115,7 +115,7 @@ class TestTokenizer:
 
     def test_tokenize_for_fts5_multi_word(self):
         """多词查询转为 AND 语法"""
-        from agent_memory_lite.core.tokenizer import tokenize_for_fts5
+        from sinomem.core.tokenizer import tokenize_for_fts5
 
         result = tokenize_for_fts5("飞书 协作")
         assert " AND " in result
@@ -127,7 +127,7 @@ class TestTTL:
 
     def test_parse_ttl_valid(self):
         """有效的 TTL 字符串解析"""
-        from agent_memory_lite.core.store import _parse_ttl
+        from sinomem.core.store import _parse_ttl
 
         result_30d = _parse_ttl("30d")
         assert result_30d is not None
@@ -141,7 +141,7 @@ class TestTTL:
 
     def test_parse_ttl_invalid(self):
         """无效 TTL 返回 None"""
-        from agent_memory_lite.core.store import _parse_ttl
+        from sinomem.core.store import _parse_ttl
 
         assert _parse_ttl(None) is None
         assert _parse_ttl("") is None
@@ -151,7 +151,7 @@ class TestTTL:
 
     def test_ttl_expired_memory(self):
         """过期记忆可被清理"""
-        from agent_memory_lite.core.engine import MemoryEngine
+        from sinomem.core.engine import MemoryEngine
 
         with tempfile.TemporaryDirectory() as tmp:
             db = str(Path(tmp) / "test.db")
@@ -176,7 +176,7 @@ class TestConfig:
 
     def test_config_no_dead_code(self):
         """确认无用配置项已移除"""
-        from agent_memory_lite.core import config
+        from sinomem.core import config
 
         assert not hasattr(config, "DEFAULT_KEYWORD_WEIGHT")
         assert not hasattr(config, "DEFAULT_SEARCH_LIMIT")
@@ -187,7 +187,7 @@ class TestSearch:
 
     def test_search_batch_mixed_modes(self):
         """批量搜索混合模式"""
-        from agent_memory_lite.core.engine import MemoryEngine
+        from sinomem.core.engine import MemoryEngine
 
         with tempfile.TemporaryDirectory() as tmp:
             db = str(Path(tmp) / "test.db")

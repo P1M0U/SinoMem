@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Agent Memory Lite — 一键卸载脚本
+# SinoMem — 一键卸载脚本
 #
 # 用法:
-#   curl -fsSL https://gitee.com/P1M0U/Agent-Memory-Lite/raw/main/uninstall.sh | bash
+#   curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/uninstall.sh | bash
 #
 #   或本地执行:
 #   bash uninstall.sh
 #
 # 卸载内容:
-#   1. pip 卸载 agent-memory-lite 包
-#   2. 删除安装目录 ~/.local/share/agent-memory-lite/
-#   3. 清理 shell 环境变量（AML_HOME / PATH / HF_ENDPOINT）
+#   1. pip 卸载 sinomem 包
+#   2. 删除安装目录 ~/.local/share/sinomem/
+#   3. 清理 shell 环境变量（SINOMEM_HOME / PATH / HF_ENDPOINT）
 #   4. 移除 Hermes 插件符号链接
 #   5. 询问是否保留记忆数据库文件
 # =============================================================================
@@ -27,30 +27,30 @@ BOLD='\033[1m'
 NC='\033[0m'
 
 # ── 默认路径（与 install.sh 保持一致）──
-INSTALL_DIR="${AML_HOME:-$HOME/.local/share/agent-memory-lite}"
-DB_PATH="${AML_DB_PATH:-$HOME/.agent-memory/memory.db}"
+INSTALL_DIR="${SINOMEM_HOME:-$HOME/.local/share/sinomem}"
+DB_PATH="${SINOMEM_DB_PATH:-$HOME/.sinomem/memory.db}"
 JIEBA_CACHE="$HOME/.cache/jieba"
-HERMES_PLUGIN_LINK="$HOME/.hermes/plugins/agent-memory-lite"
+HERMES_PLUGIN_LINK="$HOME/.hermes/plugins/sinomem"
 
 # ── Banner ──
 echo ""
 echo -e "${BLUE}╔══════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║  ${BOLD}Agent Memory Lite — 一键卸载${NC}${BLUE}          ║${NC}"
+echo -e "${BLUE}║  ${BOLD}SinoMem — 一键卸载${NC}${BLUE}          ║${NC}"
 echo -e "${BLUE}╚══════════════════════════════════════════╝${NC}"
 echo ""
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 步骤 1: pip 卸载
 # ══════════════════════════════════════════════════════════════════════════════
-echo -e "${BOLD}[1/5]${NC} pip 卸载 agent-memory-lite..."
+echo -e "${BOLD}[1/5]${NC} pip 卸载 sinomem..."
 
 # 系统 pip 卸载
 UNINSTALLED=0
 for pip_cmd in pip3 pip; do
     if command -v "$pip_cmd" &>/dev/null; then
-        if "$pip_cmd" show agent-memory-lite &>/dev/null 2>&1; then
+        if "$pip_cmd" show sinomem &>/dev/null 2>&1; then
             echo -e "  卸载系统 pip 安装..."
-            "$pip_cmd" uninstall -y agent-memory-lite 2>/dev/null && UNINSTALLED=1 || true
+            "$pip_cmd" uninstall -y sinomem 2>/dev/null && UNINSTALLED=1 || true
             break
         fi
     fi
@@ -70,9 +70,9 @@ done
 
 if [ -n "$HERMES_VENV" ]; then
     HERMES_PIP="$HERMES_VENV/bin/pip"
-    if "$HERMES_PIP" show agent-memory-lite &>/dev/null 2>&1; then
+    if "$HERMES_PIP" show sinomem &>/dev/null 2>&1; then
         echo -e "  卸载 Hermes venv 中的安装..."
-        "$HERMES_PIP" uninstall -y agent-memory-lite 2>/dev/null && UNINSTALLED=1 || true
+        "$HERMES_PIP" uninstall -y sinomem 2>/dev/null && UNINSTALLED=1 || true
     fi
 fi
 
@@ -104,8 +104,8 @@ echo ""
 # ══════════════════════════════════════════════════════════════════════════════
 echo -e "${BOLD}[3/5]${NC} 清理 shell 环境变量..."
 
-ENV_BLOCK_START="# >>> Agent Memory Lite >>>"
-ENV_BLOCK_END="# <<< Agent Memory Lite <<<"
+ENV_BLOCK_START="# >>> SinoMem >>>"
+ENV_BLOCK_END="# <<< SinoMem <<<"
 
 CLEANED_COUNT=0
 for rc_file in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
@@ -124,7 +124,7 @@ done
 if [ "$CLEANED_COUNT" -gt 0 ]; then
     echo -e "  ${GREEN}✓${NC} 已清理 ${CLEANED_COUNT} 个 shell 配置文件"
 else
-    echo -e "  ${YELLOW}!${NC} 未找到 Agent Memory Lite 的环境变量配置，跳过"
+    echo -e "  ${YELLOW}!${NC} 未找到 SinoMem 的环境变量配置，跳过"
 fi
 
 echo ""
@@ -209,7 +209,7 @@ if [ "$DB_EXISTS" = true ]; then
         echo -e "  ${GREEN}✓${NC} 数据库已保留: ${DB_PATH}"
         echo ""
         echo -e "  ${BLUE}ℹ${NC}  重新安装后可直接使用原有记忆："
-        echo "     curl -fsSL https://gitee.com/P1M0U/Agent-Memory-Lite/raw/main/install.sh | bash"
+        echo "     curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/install.sh | bash"
     fi
 else
     echo -e "  ${YELLOW}!${NC} 数据库不存在，跳过"
@@ -221,7 +221,7 @@ echo ""
 # 额外清理（静默）
 # ══════════════════════════════════════════════════════════════════════════════
 
-# pip 缓存中可能残留的 agent-memory-lite 构建文件
+# pip 缓存中可能残留的 sinomem 构建文件
 pip_cache_clean() {
     for pip_cmd in pip3 pip; do
         if command -v "$pip_cmd" &>/dev/null; then
@@ -239,9 +239,9 @@ echo -e "${GREEN}╚════════════════════
 echo ""
 echo -e "  ${BOLD}已清理的内容：${NC}"
 echo "  ────────────────────────────────────────────"
-echo "  ✓ pip 包 (agent-memory-lite)"
+echo "  ✓ pip 包 (sinomem)"
 echo "  ✓ 安装目录 (${INSTALL_DIR})"
-echo "  ✓ shell 环境变量 (AML_HOME / PATH / HF_ENDPOINT)"
+echo "  ✓ shell 环境变量 (SINOMEM_HOME / PATH / HF_ENDPOINT)"
 echo "  ✓ Hermes 插件链接"
 echo "  ────────────────────────────────────────────"
 echo ""
@@ -251,5 +251,5 @@ echo "      source ~/.bashrc    (bash 用户)"
 echo "      source ~/.zshrc     (zsh 用户)"
 echo ""
 echo -e "  ${BOLD}重新安装：${NC}"
-echo "    curl -fsSL https://gitee.com/P1M0U/Agent-Memory-Lite/raw/main/install.sh | bash"
+echo "    curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/install.sh | bash"
 echo ""

@@ -35,8 +35,8 @@ git push gitee main --tags
 
 - `pyproject.toml`: `version` 声明为 `dynamic`，由 `setuptools-scm` 在构建时注入
 - `build-system.requires`: 包含 `setuptools>=64` 和 `setuptools-scm>=8`
-- `agent_memory_lite/__init__.py`: 通过 `importlib.metadata.version("agent-memory-lite")` 读取运行时版本，未安装时降级为 `"0.0.0.dev0"`
-- `[tool.setuptools.packages.find]` 配置 `include = ["agent_memory_lite*"]` 避免误包含 `dicts/`、`hermes_plugin/` 等非包目录
+- `sinomem/__init__.py`: 通过 `importlib.metadata.version("sinomem")` 读取运行时版本，未安装时降级为 `"0.0.0.dev0"`
+- `[tool.setuptools.packages.find]` 配置 `include = ["sinomem*"]` 避免误包含 `dicts/`、`hermes_plugin/` 等非包目录
 
 ### 注意事项
 

@@ -1,4 +1,4 @@
-# Agent Memory Lite
+# SinoMem
 
 English | [中文](README.md)
 
@@ -21,12 +21,12 @@ Lightweight, Chinese-friendly Agent memory system with local semantic search —
 ## Quick Start (30 seconds)
 
 ```bash
-# Install via one-liner (installs to ~/.local/share/agent-memory-lite/)
-curl -fsSL https://github.com/P1M0U/Agent-Memory-Lite/raw/main/install.sh | bash -s -- --mirror github
+# Install via one-liner (installs to ~/.local/share/sinomem/)
+curl -fsSL https://github.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --mirror github
 
 # Open a new terminal, then:
-aml store "User prefers Docker for deployment" -c user_pref
-aml search "Docker"
+sinomem store "User prefers Docker for deployment" -c user_pref
+sinomem search "Docker"
 # Output: #1  user_pref  score=0.2
 #         User prefers Docker for deployment
 ```
@@ -39,9 +39,9 @@ aml search "Docker"
 - 💰 Teams that don't want to pay per-token embedding API costs (local ONNX inference)
 - 🔗 Sharing the same long-term memory across multiple AI tools
 
-## Why Agent Memory Lite?
+## Why SinoMem?
 
-| Feature | Agent Memory Lite | Mem0 | Built-in Memory |
+| Feature | SinoMem | Mem0 | Built-in Memory |
 |---------|-------------------|------|----------------|
 | Chinese Tokenization | ✅ jieba custom | Default | Default |
 | Local Deployment | ✅ SQLite single file | ❌ API required | ✅ Framework-locked |
@@ -70,7 +70,7 @@ aml search "Docker"
 ## Project Structure
 
 ```
-agent_memory_lite/        # Core memory engine
+sinomem/        # Core memory engine
 ├── core/                 # Storage, search, tokenization, embeddings
 ├── dicts/                # Custom jieba dictionaries
 ├── entrypoints/          # CLI and MCP Server
@@ -96,14 +96,14 @@ install.sh                # One-liner install script
 
 Copy the prompt below and send it to your AI Agent — it will handle the install automatically.
 
-> **💡 If you're using Hermes Agent**, we recommend installing via the **Memory Provider plugin** for a better integration experience (auto sync, in-process calls, tool deduplication). See [Hermes Memory Provider Adapter Guide](agent-memory-lite-hermes-adapter-guide.md).
+> **💡 If you're using Hermes Agent**, we recommend installing via the **Memory Provider plugin** for a better integration experience (auto sync, in-process calls, tool deduplication). See [Hermes Memory Provider Adapter Guide](sinomem-hermes-adapter-guide.md).
 
 ### Option A: One-Liner Script (Recommended)
 
 ```
-Please install Agent Memory Lite for me, run:
+Please install SinoMem for me, run:
 
-curl -fsSL https://github.com/P1M0U/Agent-Memory-Lite/raw/main/install.sh | bash -s -- --mirror github --with-embedding
+curl -fsSL https://github.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --mirror github --with-embedding
 
 Tell me the result when done.
 ```
@@ -111,34 +111,34 @@ Tell me the result when done.
 ### Option B: Install from GitHub
 
 ```
-Please install Agent Memory Lite for me. Steps:
+Please install SinoMem for me. Steps:
 
 1. Clone and install
-   git clone --depth 1 https://github.com/P1M0U/Agent-Memory-Lite.git ~/.local/share/agent-memory-lite
-   cd ~/.local/share/agent-memory-lite
+   git clone --depth 1 https://github.com/P1M0U/SinoMem.git ~/.local/share/sinomem
+   cd ~/.local/share/sinomem
    pip install -e .
 
 2. Verify the installation works
-   python -c "from agent_memory_lite.core.engine import MemoryEngine; print('ok')"
+   python -c "from sinomem.core.engine import MemoryEngine; print('ok')"
 
 3. Ask the user whether to install embedding dependencies (for semantic search):
    — A. Skip (default) — semantic search degrades gracefully to keyword search
    — B. Install (onnxruntime + sqlite-vec, ~200MB)
 
 4. If user picked B, run pip install -e ".[embedding]", then ask if they want to auto-download the ONNX model (~24MB):
-   python -c "from agent_memory_lite.core.embedder import ensure_model; print('ok' if ensure_model() else 'download failed')"
+   python -c "from sinomem.core.embedder import ensure_model; print('ok' if ensure_model() else 'download failed')"
 
 5. Ask the user to choose an install method:
-   — A. Hermes Memory Provider plugin (recommended) — Run `ln -s ~/.local/share/agent-memory-lite/hermes_plugin/ ~/.hermes/plugins/agent-memory-lite`
+   — A. Hermes Memory Provider plugin (recommended) — Run `ln -s ~/.local/share/sinomem/hermes_plugin/ ~/.hermes/plugins/sinomem`
    — B. MCP Server — Continue with step 6
 
 6. (Only if user chose MCP Server) Add MCP Server config to ~/.hermes/config.yaml under mcp_servers:
-   agent-memory-lite:
+   sinomem:
      args: []
-     command: python -m agent_memory_lite.entrypoints.mcp_server
+     command: python -m sinomem.entrypoints.mcp_server
 
-7. Set AML_HOME env var, append to ~/.bashrc or ~/.zshrc:
-   export AML_HOME="$HOME/.local/share/agent-memory-lite"
+7. Set SINOMEM_HOME env var, append to ~/.bashrc or ~/.zshrc:
+   export SINOMEM_HOME="$HOME/.local/share/sinomem"
 
 Tell me the result when done.
 ```
@@ -146,34 +146,34 @@ Tell me the result when done.
 ### Option C: Install from Gitee (faster in China)
 
 ```
-Please install Agent Memory Lite for me. Steps:
+Please install SinoMem for me. Steps:
 
 1. Clone and install
-   git clone --depth 1 https://gitee.com/P1M0U/Agent-Memory-Lite.git ~/.local/share/agent-memory-lite
-   cd ~/.local/share/agent-memory-lite
+   git clone --depth 1 https://gitee.com/P1M0U/SinoMem.git ~/.local/share/sinomem
+   cd ~/.local/share/sinomem
    pip install -e .
 
 2. Verify the installation works
-   python -c "from agent_memory_lite.core.engine import MemoryEngine; print('ok')"
+   python -c "from sinomem.core.engine import MemoryEngine; print('ok')"
 
 3. Ask the user whether to install embedding dependencies (for semantic search):
    — A. Skip (default) — semantic search degrades gracefully to keyword search
    — B. Install (onnxruntime + sqlite-vec, ~200MB)
 
 4. If user picked B, run pip install -e ".[embedding]", then ask if they want to auto-download the ONNX model (~24MB):
-   python -c "from agent_memory_lite.core.embedder import ensure_model; print('ok' if ensure_model() else 'download failed')"
+   python -c "from sinomem.core.embedder import ensure_model; print('ok' if ensure_model() else 'download failed')"
 
 5. Ask the user to choose an install method:
-   — A. Hermes Memory Provider plugin (recommended) — Run `ln -s ~/.local/share/agent-memory-lite/hermes_plugin/ ~/.hermes/plugins/agent-memory-lite`
+   — A. Hermes Memory Provider plugin (recommended) — Run `ln -s ~/.local/share/sinomem/hermes_plugin/ ~/.hermes/plugins/sinomem`
    — B. MCP Server — Continue with step 6
 
 6. (Only if user chose MCP Server) Add MCP Server config to ~/.hermes/config.yaml under mcp_servers:
-   agent-memory-lite:
+   sinomem:
      args: []
-     command: python -m agent_memory_lite.entrypoints.mcp_server
+     command: python -m sinomem.entrypoints.mcp_server
 
-7. Set AML_HOME env var, append to ~/.bashrc or ~/.zshrc:
-   export AML_HOME="$HOME/.local/share/agent-memory-lite"
+7. Set SINOMEM_HOME env var, append to ~/.bashrc or ~/.zshrc:
+   export SINOMEM_HOME="$HOME/.local/share/sinomem"
 
 Tell me the result when done.
 ```
@@ -184,7 +184,7 @@ Tell me the result when done.
 
 ## Multi-Agent Auto Memory Sync (Plugin System)
 
-Beyond MCP's active-call mode, Agent Memory Lite provides **auto-sync plugins** — the Agent automatically manages long-term memory without explicitly calling memory tools.
+Beyond MCP's active-call mode, SinoMem provides **auto-sync plugins** — the Agent automatically manages long-term memory without explicitly calling memory tools.
 
 ### Claude Code (one-click install)
 
@@ -197,7 +197,7 @@ Installs 3 hooks: inject memory context before prompts, capture writes, and pers
 ### LangChain (one-line import)
 
 ```python
-from agent_memory_lite.plugins.langchain import AMLMemory
+from sinomem.plugins.langchain import AMLMemory
 
 agent = create_react_agent(llm, tools, memory=AMLMemory())
 ```
@@ -205,7 +205,7 @@ agent = create_react_agent(llm, tools, memory=AMLMemory())
 ### CrewAI (one-line import)
 
 ```python
-from agent_memory_lite.plugins.crewai import AMLCrewMemory
+from sinomem.plugins.crewai import AMLCrewMemory
 
 crew = Crew(agents=[...], tasks=[...], memory=AMLCrewMemory())
 ```
@@ -213,7 +213,7 @@ crew = Crew(agents=[...], tasks=[...], memory=AMLCrewMemory())
 ### AutoGen (one-line import)
 
 ```python
-from agent_memory_lite.plugins.autogen import AMLAutoGenMemory
+from sinomem.plugins.autogen import AMLAutoGenMemory
 
 assistant = AssistantAgent(name="agent", memory_provider=AMLAutoGenMemory())
 ```
@@ -221,7 +221,7 @@ assistant = AssistantAgent(name="agent", memory_provider=AMLAutoGenMemory())
 ### Generic Python API
 
 ```python
-from agent_memory_lite.plugins import create_plugin
+from sinomem.plugins import create_plugin
 
 plugin = create_plugin()
 plugin.auto_store("User prefers Docker")
@@ -234,11 +234,11 @@ results = plugin.auto_search("deployment tools")
 
 ```bash
 # One-liner (recommended)
-curl -fsSL https://github.com/P1M0U/Agent-Memory-Lite/raw/main/install.sh | bash -s -- --mirror github
+curl -fsSL https://github.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --mirror github
 
 # Or clone manually
-git clone --depth 1 https://github.com/P1M0U/Agent-Memory-Lite.git ~/.local/share/agent-memory-lite
-cd ~/.local/share/agent-memory-lite
+git clone --depth 1 https://github.com/P1M0U/SinoMem.git ~/.local/share/sinomem
+cd ~/.local/share/sinomem
 pip install -e .
 ```
 
@@ -247,9 +247,9 @@ pip install -e .
 Add to `~/.hermes/config.yaml` under `mcp_servers:`:
 
 ```yaml
-  agent-memory-lite:
+  sinomem:
     args: []
-    command: python -m agent_memory_lite.entrypoints.mcp_server
+    command: python -m sinomem.entrypoints.mcp_server
 ```
 
 Restart Hermes to activate.
@@ -297,22 +297,22 @@ Without the model, semantic search degrades gracefully to keyword search.
 
 ```bash
 # Store a memory
-aml store "User prefers receiving files via Feishu" -c user_pref -t "feishu"
+sinomem store "User prefers receiving files via Feishu" -c user_pref -t "feishu"
 
 # Keyword search
-aml search "feishu"
+sinomem search "feishu"
 
 # Semantic search (requires embedding deps + model)
-aml search "how to send files to user" -m semantic
+sinomem search "how to send files to user" -m semantic
 
 # Hybrid search (recommended)
-aml search "MCP protocol" -m hybrid
+sinomem search "MCP protocol" -m hybrid
 
 # Stats
-aml stats
+sinomem stats
 
 # List all memories
-aml list
+sinomem list
 
 # Reclaim disk space after deletes
 aml vacuum
@@ -380,5 +380,5 @@ Copyright © 2026 [P1M0U](https://github.com/P1M0U)
 ## Contact
 
 - Email: [p1m0u@foxmail.com](mailto:p1m0u@foxmail.com)
-- GitHub: [https://github.com/P1M0U/Agent-Memory-Lite](https://github.com/P1M0U/Agent-Memory-Lite)
-- Gitee: [https://gitee.com/P1M0U/Agent-Memory-Lite](https://gitee.com/P1M0U/Agent-Memory-Lite)
+- GitHub: [https://github.com/P1M0U/SinoMem](https://github.com/P1M0U/SinoMem)
+- Gitee: [https://gitee.com/P1M0U/SinoMem](https://gitee.com/P1M0U/SinoMem)

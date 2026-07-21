@@ -2,8 +2,8 @@
 
 import pytest
 
-from agent_memory_lite.core.engine import MemoryEngine
-from agent_memory_lite.tools.migrate import migrate_memories
+from sinomem.core.engine import MemoryEngine
+from sinomem.tools.migrate import migrate_memories
 
 
 class TestMigrate:
@@ -26,7 +26,7 @@ class TestMigrate:
     def test_migrate_generates_vectors(self, tmp_path):
         """有嵌入模型时生成向量"""
         try:
-            from agent_memory_lite.core.embedder import Embedder
+            from sinomem.core.embedder import Embedder
 
             embedder = Embedder()
             _ = embedder.dim
@@ -45,7 +45,7 @@ class TestMigrate:
         assert result["skipped"] == 0
 
         # 验证向量确实被添加
-        from agent_memory_lite.core.embedder import Embedder
+        from sinomem.core.embedder import Embedder
 
         embedder = Embedder()
         eng2 = MemoryEngine(db_path, embedder=embedder)
@@ -55,7 +55,7 @@ class TestMigrate:
     def test_migrate_force_rebuild(self, tmp_path):
         """--force 模式清空并重建向量"""
         try:
-            from agent_memory_lite.core.embedder import Embedder
+            from sinomem.core.embedder import Embedder
 
             embedder = Embedder()
             _ = embedder.dim
@@ -87,7 +87,7 @@ class TestMigrate:
     def test_migrate_skip_existing(self, tmp_path):
         """已有的向量会被跳过（非 force 模式）"""
         try:
-            from agent_memory_lite.core.embedder import Embedder
+            from sinomem.core.embedder import Embedder
 
             embedder = Embedder()
             _ = embedder.dim
@@ -112,7 +112,7 @@ class TestMigrate:
     def test_get_vec_dim(self, tmp_path):
         """get_vec_dim 返回正确的向量表示维度"""
         try:
-            from agent_memory_lite.core.embedder import Embedder
+            from sinomem.core.embedder import Embedder
 
             embedder = Embedder()
             _ = embedder.dim

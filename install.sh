@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Agent Memory Lite — 一键安装脚本
+# SinoMem — 一键安装脚本
 #
 # 用法:
-#   curl -fsSL https://gitee.com/P1M0U/Agent-Memory-Lite/raw/main/install.sh | bash
+#   curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/install.sh | bash
 #
 #   或指定镜像源:
 #   curl -fsSL ... | bash -s -- --mirror github
 #
 # 安装内容:
-#   1. 克隆项目到 ~/.local/share/agent-memory-lite/
+#   1. 克隆项目到 ~/.local/share/sinomem/
 #   2. pip install -e . 安装核心包（含 CLI 命令 aml）
 #   3. 自动配置 shell 环境变量
 #   4. 询问是否安装 embedding 可选依赖（语义搜索）
@@ -26,9 +26,9 @@ BOLD='\033[1m'
 NC='\033[0m'
 
 # ── 配置 ──
-INSTALL_DIR="${AML_HOME:-$HOME/.local/share/agent-memory-lite}"
-GITEE_URL="https://gitee.com/P1M0U/Agent-Memory-Lite.git"
-GITHUB_URL="https://github.com/P1M0U/Agent-Memory-Lite.git"
+INSTALL_DIR="${SINOMEM_HOME:-$HOME/.local/share/sinomem}"
+GITEE_URL="https://gitee.com/P1M0U/SinoMem.git"
+GITHUB_URL="https://github.com/P1M0U/SinoMem.git"
 REPO_URL="$GITEE_URL"  # 默认 Gitee（国内快）
 
 # ── 参数解析 ──
@@ -69,7 +69,7 @@ fi
 # ── Banner ──
 echo ""
 echo -e "${BLUE}╔══════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║  ${BOLD}Agent Memory Lite — 一键安装${NC}${BLUE}          ║${NC}"
+echo -e "${BLUE}║  ${BOLD}SinoMem — 一键安装${NC}${BLUE}          ║${NC}"
 echo -e "${BLUE}║  轻量级中文 Agent 记忆增强系统           ║${NC}"
 echo -e "${BLUE}╚══════════════════════════════════════════╝${NC}"
 echo ""
@@ -101,7 +101,7 @@ if [ -z "$PYTHON" ]; then
     echo ""
     echo -e "  当前 Python 版本: $("python3" --version 2>/dev/null || echo "未安装")"
     echo ""
-    echo -e "${BOLD}  原因${NC}：agent-memory-lite 使用了 Python 3.11 特性"
+    echo -e "${BOLD}  原因${NC}：sinomem 使用了 Python 3.11 特性"
     echo -e "        （datetime.UTC / PEP 615），无法降级运行。"
     echo ""
     echo -e "${BOLD}  请选择以下方式之一安装 Python 3.11+：${NC}"
@@ -196,9 +196,9 @@ echo -e "  pip install ${INSTALL_ARGS[*]} ..."
 "$PYTHON" -m pip install --quiet "${INSTALL_ARGS[@]}" 2>&1 | tail -3
 
 # 验证安装
-if "$PYTHON" -c "import agent_memory_lite" 2>/dev/null; then
-    VER=$("$PYTHON" -c "from agent_memory_lite import __version__; print(__version__)" 2>/dev/null || echo "?")
-    echo -e "  ${GREEN}✓${NC} agent-memory-lite ${VER} 安装成功${EXTRA_NAME}"
+if "$PYTHON" -c "import sinomem" 2>/dev/null; then
+    VER=$("$PYTHON" -c "from sinomem import __version__; print(__version__)" 2>/dev/null || echo "?")
+    echo -e "  ${GREEN}✓${NC} sinomem ${VER} 安装成功${EXTRA_NAME}"
 else
     echo -e "${RED}✗ 安装验证失败，请检查上方错误信息${NC}"
     exit 1
@@ -216,11 +216,11 @@ case "$SHELL" in
     *) SHELL_RC="$HOME/.profile" ;;
 esac
 
-ENV_BLOCK_START="# >>> Agent Memory Lite >>>"
-ENV_BLOCK_END="# <<< Agent Memory Lite <<<"
+ENV_BLOCK_START="# >>> SinoMem >>>"
+ENV_BLOCK_END="# <<< SinoMem <<<"
 ENV_CONTENT="${ENV_BLOCK_START}
-export AML_HOME=\"${INSTALL_DIR}\"
-export PATH=\"\${AML_HOME}/.venv/bin:\${PATH}\"
+export SINOMEM_HOME=\"${INSTALL_DIR}\"
+export PATH=\"\${SINOMEM_HOME}/.venv/bin:\${PATH}\"
 export HF_ENDPOINT=\"https://hf-mirror.com\"
 ${ENV_BLOCK_END}"
 
@@ -233,11 +233,11 @@ $ENV_CONTENT" "$SHELL_RC"
         sed -i "/$ENV_BLOCK_START/,/$ENV_BLOCK_END/c\\
 $ENV_CONTENT" "$SHELL_RC"
     fi
-    echo -e "  ${YELLOW}!${NC} 已更新 $SHELL_RC 中的 AML_HOME"
+    echo -e "  ${YELLOW}!${NC} 已更新 $SHELL_RC 中的 SINOMEM_HOME"
 else
     echo "" >> "$SHELL_RC"
     echo "$ENV_CONTENT" >> "$SHELL_RC"
-    echo -e "  ${GREEN}✓${NC} 已添加 AML_HOME 到 $SHELL_RC"
+    echo -e "  ${GREEN}✓${NC} 已添加 SINOMEM_HOME 到 $SHELL_RC"
 fi
 
 echo ""
@@ -253,7 +253,7 @@ if [ -d "$HOME/.hermes" ] || [ -n "${HERMES_HOME:-}" ]; then
     echo ""
 
     # 自动符号链接 hermes_plugin
-    PLUGIN_LINK="$HERMES_PLUGIN_DIR/agent-memory-lite"
+    PLUGIN_LINK="$HERMES_PLUGIN_DIR/sinomem"
     if [ -L "$PLUGIN_LINK" ] || [ -d "$PLUGIN_LINK" ]; then
         echo -e "  ${YELLOW}!${NC} Hermes 插件已存在，跳过链接"
     else
@@ -262,8 +262,8 @@ if [ -d "$HOME/.hermes" ] || [ -n "${HERMES_HOME:-}" ]; then
         echo -e "  ${GREEN}✓${NC} 已链接 Hermes 插件 → ${PLUGIN_LINK}"
     fi
 
-    # 自动安装 agent-memory-lite 到 Hermes venv
-    # （Hermes 插件在 Hermes 进程中运行，需要能 import agent_memory_lite）
+    # 自动安装 sinomem 到 Hermes venv
+    # （Hermes 插件在 Hermes 进程中运行，需要能 import sinomem）
     HERMES_VENV=""
     for venv_path in \
         "$HERMES_BASE/hermes-agent/venv" \
@@ -286,11 +286,11 @@ if [ -d "$HOME/.hermes" ] || [ -n "${HERMES_HOME:-}" ]; then
         "$HERMES_PYTHON" -m pip install --quiet --upgrade pip 2>&1 | tail -1
         "$HERMES_PYTHON" -m pip install --quiet jieba tokenizers 2>&1 | tail -3
 
-        # 安装 agent-memory-lite 包本身到 Hermes venv
-        echo "  安装 agent-memory-lite（可编辑模式）..."
+        # 安装 sinomem 包本身到 Hermes venv
+        echo "  安装 sinomem（可编辑模式）..."
         "$HERMES_PYTHON" -m pip install --quiet -e "$INSTALL_DIR" 2>&1 | tail -3
 
-        if "$HERMES_PYTHON" -c "import agent_memory_lite" 2>/dev/null; then
+        if "$HERMES_PYTHON" -c "import sinomem" 2>/dev/null; then
             echo -e "  ${GREEN}✓${NC} Hermes venv 配置完成（${HERMES_VENV}）"
         else
             echo -e "  ${YELLOW}!${NC} Hermes venv 安装验证失败，请手动执行："
@@ -318,7 +318,7 @@ if [ "$WITH_EMBEDDING" = "yes" ]; then
         echo -e "  ${GREEN}✓${NC} ONNX 模型已就绪"
     else
         echo -e "  ${YELLOW}!${NC} ONNX 模型未下载，语义搜索将自动降级为关键词搜索"
-        echo "  下载方法: cd ${INSTALL_DIR} && python -c \"from agent_memory_lite.core.embedder import ensure_model; ensure_model()\""
+        echo "  下载方法: cd ${INSTALL_DIR} && python -c \"from sinomem.core.embedder import ensure_model; ensure_model()\""
     fi
     echo ""
 fi
@@ -333,10 +333,10 @@ echo "  ────────────────────────
 echo "  新终端执行:  source ${SHELL_RC}  （刷新环境变量）"
 echo ""
 echo "  CLI 命令:"
-echo "    aml store \"用户喜欢 Python 编程\" -c user_pref"
-echo "    aml search \"Python\" -m hybrid"
-echo "    aml list"
-echo "    aml stats"
+echo "    sinomem store \"用户喜欢 Python 编程\" -c user_pref"
+echo "    sinomem search \"Python\" -m hybrid"
+echo "    sinomem list"
+echo "    sinomem stats"
 echo "  ────────────────────────────────────────────"
 echo ""
 echo -e "  ${BOLD}更新：${NC}"

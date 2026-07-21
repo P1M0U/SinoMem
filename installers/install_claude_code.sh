@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Agent Memory Lite — Claude Code 自动记忆同步一键安装
+# SinoMem — Claude Code 自动记忆同步一键安装
 #
 # 安装后，Claude Code 将自动：
 #   1. 每次对话前 — 检索相关记忆注入 prompt
@@ -16,7 +16,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-PLUGIN_DIR="$PROJECT_ROOT/agent_memory_lite/plugins/claude_code"
+PLUGIN_DIR="$PROJECT_ROOT/sinomem/plugins/claude_code"
 
 # 颜色输出
 GREEN='\033[0;32m'
@@ -25,7 +25,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 echo -e "${BLUE}============================================${NC}"
-echo -e "${BLUE} Agent Memory Lite — Claude Code 自动同步${NC}"
+echo -e "${BLUE} SinoMem — Claude Code 自动同步${NC}"
 echo -e "${BLUE}============================================${NC}"
 echo ""
 
@@ -51,7 +51,7 @@ if [[ -f "$SETTINGS_FILE" ]]; then
 fi
 
 # ── 生成/更新 settings.local.json ──
-PYTHON_BIN="${AML_PYTHON:-python3}"
+PYTHON_BIN="${SINOMEM_PYTHON:-python3}"
 
 # Claude Code hooks 配置
 HOOKS_CONFIG=$(cat <<EOF
@@ -94,12 +94,12 @@ fi
 # ── 验证 Python 环境 ──
 echo ""
 echo "检查 Python 环境..."
-if $PYTHON_BIN -c "from agent_memory_lite.plugins.base import BasePlugin; print('OK')" 2>/dev/null; then
-    echo -e "${GREEN}✓${NC} agent_memory_lite 导入成功"
+if $PYTHON_BIN -c "from sinomem.plugins.base import BasePlugin; print('OK')" 2>/dev/null; then
+    echo -e "${GREEN}✓${NC} sinomem 导入成功"
 else
-    echo -e "${YELLOW}!${NC} agent_memory_lite 未在 Python 路径中"
-    echo "  请确保已安装: pip install agent-memory-lite"
-    echo "  或设置环境变量: export AML_HOME=$PROJECT_ROOT"
+    echo -e "${YELLOW}!${NC} sinomem 未在 Python 路径中"
+    echo "  请确保已安装: pip install sinomem"
+    echo "  或设置环境变量: export SINOMEM_HOME=$PROJECT_ROOT"
 fi
 
 echo ""

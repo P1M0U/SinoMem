@@ -6,12 +6,12 @@ build-backend = "setuptools.build_meta"
 # 版本号自动从 git tag 生成，无需手动维护
 
 [tool.setuptools.packages.find]
-include = ["agent_memory_lite*"]
+include = ["sinomem*"]
 
 [project]
-name = "agent-memory-lite"
+name = "sinomem"
 dynamic = ["version"]
-description = "轻量级中文友好的 Agent 记忆增强系统"
+description = "SinoMem — 轻量级中文记忆工具包"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -33,7 +33,8 @@ dev = [
 ]
 
 [project.scripts]
-aml = "agent_memory_lite.entrypoints.cli:main"
+sinomem = "sinomem.entrypoints.cli:main"
+sm = "sinomem.entrypoints.cli:main"
 
 [dependency-groups]
 dev = [
@@ -71,7 +72,7 @@ exclude = [
     "__pycache__",
     ".git",
     "hermes_plugin",
-    "agent_memory_lite/dicts",
+    "sinomem/dicts",
 ]
 
 [tool.ruff.format]
