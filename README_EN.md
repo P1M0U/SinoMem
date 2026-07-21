@@ -105,6 +105,7 @@ Please install SinoMem for me, run:
 
 curl -fsSL https://github.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --mirror github --with-embedding
 
+After install, run source ~/.bashrc (or ~/.zshrc) to refresh PATH, then verify with sinomem --help.
 Tell me the result when done.
 ```
 
@@ -113,32 +114,36 @@ Tell me the result when done.
 ```
 Please install SinoMem for me. Steps:
 
-1. Clone and install
+1. Clone and set up virtual environment
    git clone --depth 1 https://github.com/P1M0U/SinoMem.git ~/.local/share/sinomem
    cd ~/.local/share/sinomem
-   pip install -e .
+   python3 -m venv .venv
+   .venv/bin/pip install -e .
 
 2. Verify the installation works
-   python -c "from sinomem.core.engine import MemoryEngine; print('ok')"
+   .venv/bin/python -c "from sinomem.core.engine import MemoryEngine; print('ok')"
 
-3. Ask the user whether to install embedding dependencies (for semantic search):
+3. Add sinomem CLI to PATH, append to ~/.bashrc or ~/.zshrc:
+   export SINOMEM_HOME="$HOME/.local/share/sinomem"
+   export PATH="$SINOMEM_HOME/.venv/bin:$PATH"
+
+4. Ask the user whether to install embedding dependencies (for semantic search):
    — A. Skip (default) — semantic search degrades gracefully to keyword search
    — B. Install (onnxruntime + sqlite-vec, ~200MB)
 
-4. If user picked B, run pip install -e ".[embedding]", then ask if they want to auto-download the ONNX model (~24MB):
-   python -c "from sinomem.core.embedder import ensure_model; print('ok' if ensure_model() else 'download failed')"
+5. If user picked B, run .venv/bin/pip install -e ".[embedding]", then ask if they want to auto-download the ONNX model (~24MB):
+   .venv/bin/python -c "from sinomem.core.embedder import ensure_model; print('ok' if ensure_model() else 'download failed')"
 
-5. Ask the user to choose an install method:
+6. Ask the user to choose an install method:
    — A. Hermes Memory Provider plugin (recommended) — Run `ln -s ~/.local/share/sinomem/hermes_plugin/ ~/.hermes/plugins/sinomem`
-   — B. MCP Server — Continue with step 6
+   — B. MCP Server — Continue with step 7-8
 
-6. (Only if user chose MCP Server) Add MCP Server config to ~/.hermes/config.yaml under mcp_servers:
+7. (Only if user chose MCP Server) Add MCP Server config to ~/.hermes/config.yaml under mcp_servers:
    sinomem:
      args: []
-     command: python -m sinomem.entrypoints.mcp_server
+     command: .venv/bin/python -m sinomem.entrypoints.mcp_server
 
-7. Set SINOMEM_HOME env var, append to ~/.bashrc or ~/.zshrc:
-   export SINOMEM_HOME="$HOME/.local/share/sinomem"
+8. Run source ~/.bashrc (or ~/.zshrc) to refresh PATH, then verify with sinomem --help.
 
 Tell me the result when done.
 ```
@@ -148,32 +153,36 @@ Tell me the result when done.
 ```
 Please install SinoMem for me. Steps:
 
-1. Clone and install
+1. Clone and set up virtual environment
    git clone --depth 1 https://gitee.com/P1M0U/SinoMem.git ~/.local/share/sinomem
    cd ~/.local/share/sinomem
-   pip install -e .
+   python3 -m venv .venv
+   .venv/bin/pip install -e .
 
 2. Verify the installation works
-   python -c "from sinomem.core.engine import MemoryEngine; print('ok')"
+   .venv/bin/python -c "from sinomem.core.engine import MemoryEngine; print('ok')"
 
-3. Ask the user whether to install embedding dependencies (for semantic search):
+3. Add sinomem CLI to PATH, append to ~/.bashrc or ~/.zshrc:
+   export SINOMEM_HOME="$HOME/.local/share/sinomem"
+   export PATH="$SINOMEM_HOME/.venv/bin:$PATH"
+
+4. Ask the user whether to install embedding dependencies (for semantic search):
    — A. Skip (default) — semantic search degrades gracefully to keyword search
    — B. Install (onnxruntime + sqlite-vec, ~200MB)
 
-4. If user picked B, run pip install -e ".[embedding]", then ask if they want to auto-download the ONNX model (~24MB):
-   python -c "from sinomem.core.embedder import ensure_model; print('ok' if ensure_model() else 'download failed')"
+5. If user picked B, run .venv/bin/pip install -e ".[embedding]", then ask if they want to auto-download the ONNX model (~24MB):
+   .venv/bin/python -c "from sinomem.core.embedder import ensure_model; print('ok' if ensure_model() else 'download failed')"
 
-5. Ask the user to choose an install method:
+6. Ask the user to choose an install method:
    — A. Hermes Memory Provider plugin (recommended) — Run `ln -s ~/.local/share/sinomem/hermes_plugin/ ~/.hermes/plugins/sinomem`
-   — B. MCP Server — Continue with step 6
+   — B. MCP Server — Continue with step 7-8
 
-6. (Only if user chose MCP Server) Add MCP Server config to ~/.hermes/config.yaml under mcp_servers:
+7. (Only if user chose MCP Server) Add MCP Server config to ~/.hermes/config.yaml under mcp_servers:
    sinomem:
      args: []
-     command: python -m sinomem.entrypoints.mcp_server
+     command: .venv/bin/python -m sinomem.entrypoints.mcp_server
 
-7. Set SINOMEM_HOME env var, append to ~/.bashrc or ~/.zshrc:
-   export SINOMEM_HOME="$HOME/.local/share/sinomem"
+8. Run source ~/.bashrc (or ~/.zshrc) to refresh PATH, then verify with sinomem --help.
 
 Tell me the result when done.
 ```
@@ -239,8 +248,11 @@ curl -fsSL https://github.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --m
 # Or clone manually
 git clone --depth 1 https://github.com/P1M0U/SinoMem.git ~/.local/share/sinomem
 cd ~/.local/share/sinomem
-pip install -e .
+python3 -m venv .venv
+.venv/bin/pip install -e .
 ```
+
+> The install script automatically adds `.venv/bin` to PATH. After refreshing your terminal, the `sinomem` command is available directly.
 
 ## Uninstall
 

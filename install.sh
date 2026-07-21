@@ -168,6 +168,17 @@ echo -e "${BOLD}[3/5]${NC} 安装 Python 包..."
 
 cd "$INSTALL_DIR"
 
+# 创建独立 venv（避免污染系统 Python，同时确保 CLI 命令可独立引用）
+if [ ! -d "$INSTALL_DIR/.venv" ]; then
+    echo -e "  创建虚拟环境..."
+    "$PYTHON" -m venv "$INSTALL_DIR/.venv"
+fi
+VENV_PYTHON="$INSTALL_DIR/.venv/bin/python"
+VENV_PIP="$INSTALL_DIR/.venv/bin/pip"
+
+# 升级 venv 中的 pip
+"$VENV_PIP" install --quiet --upgrade pip 2>&1 | tail -1
+
 # 构建安装参数
 INSTALL_ARGS=("-e" ".")
 EXTRA_NAME=""
@@ -193,11 +204,11 @@ fi
 
 echo ""
 echo -e "  pip install ${INSTALL_ARGS[*]} ..."
-"$PYTHON" -m pip install --quiet "${INSTALL_ARGS[@]}" 2>&1 | tail -3
+"$VENV_PIP" install --quiet "${INSTALL_ARGS[@]}" 2>&1 | tail -3
 
 # 验证安装
-if "$PYTHON" -c "import sinomem" 2>/dev/null; then
-    VER=$("$PYTHON" -c "from sinomem import __version__; print(__version__)" 2>/dev/null || echo "?")
+if "$VENV_PYTHON" -c "import sinomem" 2>/dev/null; then
+    VER=$("$VENV_PYTHON" -c "from sinomem import __version__; print(__version__)" 2>/dev/null || echo "?")
     echo -e "  ${GREEN}✓${NC} sinomem ${VER} 安装成功${EXTRA_NAME}"
 else
     echo -e "${RED}✗ 安装验证失败，请检查上方错误信息${NC}"
@@ -318,7 +329,7 @@ if [ "$WITH_EMBEDDING" = "yes" ]; then
         echo -e "  ${GREEN}✓${NC} ONNX 模型已就绪"
     else
         echo -e "  ${YELLOW}!${NC} ONNX 模型未下载，语义搜索将自动降级为关键词搜索"
-        echo "  下载方法: cd ${INSTALL_DIR} && python -c \"from sinomem.core.embedder import ensure_model; ensure_model()\""
+        echo "  下载方法: cd ${INSTALL_DIR} && .venv/bin/python -c \"from sinomem.core.embedder import ensure_model; ensure_model()\""
     fi
     echo ""
 fi
@@ -332,7 +343,7 @@ echo -e "  ${BOLD}快速开始：${NC}"
 echo "  ────────────────────────────────────────────"
 echo "  新终端执行:  source ${SHELL_RC}  （刷新环境变量）"
 echo ""
-echo "  CLI 命令:"
+echo "  CLI 命令（已在 PATH 中）:"
 echo "    sinomem store \"用户喜欢 Python 编程\" -c user_pref"
 echo "    sinomem search \"Python\" -m hybrid"
 echo "    sinomem list"
@@ -340,6 +351,6 @@ echo "    sinomem stats"
 echo "  ────────────────────────────────────────────"
 echo ""
 echo -e "  ${BOLD}更新：${NC}"
-echo "    cd ${INSTALL_DIR} && git pull && pip install -e ."
+echo "    cd ${INSTALL_DIR} && git pull && .venv/bin/pip install -e ."
 echo "  ────────────────────────────────────────────"
 echo ""

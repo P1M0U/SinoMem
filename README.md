@@ -110,7 +110,8 @@ install.sh                # 一键安装脚本
 
 curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --with-embedding
 
-安装后告诉我结果。
+安装后执行 source ~/.bashrc（或 ~/.zshrc）刷新环境变量，然后运行 sinomem --help 验证 CLI 命令可用。
+告诉我结果。
 ```
 
 ### 方式二：从 Gitee 安装（国内更快）
@@ -118,33 +119,37 @@ curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --wi
 ```
 请帮我安装 SinoMem 记忆系统，步骤如下：
 
-1. 克隆仓库并安装
+1. 克隆仓库并创建虚拟环境
    git clone --depth 1 https://gitee.com/P1M0U/SinoMem.git ~/.local/share/sinomem
    cd ~/.local/share/sinomem
-   pip install -e .
+   python3 -m venv .venv
+   .venv/bin/pip install -e .
 
 2. 验证安装是否成功
-   python -c "from sinomem.core.engine import MemoryEngine; print('ok')"
+   .venv/bin/python -c "from sinomem.core.engine import MemoryEngine; print('ok')"
 
-3. 询问用户是否需要安装嵌入模型（用于语义搜索），给出以下选项让用户选择：
+3. 将 sinomem CLI 加入 PATH，追加到 ~/.bashrc 或 ~/.zshrc：
+   export SINOMEM_HOME="$HOME/.local/share/sinomem"
+   export PATH="$SINOMEM_HOME/.venv/bin:$PATH"
+
+4. 询问用户是否需要安装嵌入模型（用于语义搜索），给出以下选项让用户选择：
    — A. 不安装（默认）— 跳过此步，语义搜索自动降级为关键词搜索
    — B. 安装 embedding 依赖（onnxruntime + sqlite-vec，~200MB）
 
-4. 如果用户选择 B，执行 pip install -e ".[embedding]" 安装依赖。
+5. 如果用户选择 B，执行 .venv/bin/pip install -e ".[embedding]" 安装依赖。
    然后询问是否需要自动下载 ONNX 模型（约 24MB），如果需要则运行：
-   python -c "from sinomem.core.embedder import ensure_model; print('ok' if ensure_model() else 'download failed')"
+   .venv/bin/python -c "from sinomem.core.embedder import ensure_model; print('ok' if ensure_model() else 'download failed')"
 
-5. 询问用户选择安装方式，给出以下选项：
+6. 询问用户选择安装方式，给出以下选项：
    — A. Hermes Memory Provider 插件方式（推荐）— 执行 `ln -s ~/.local/share/sinomem/hermes_plugin/ ~/.hermes/plugins/sinomem`
-   — B. MCP Server 方式 — 继续执行以下步骤 6-7
+   — B. MCP Server 方式 — 继续执行以下步骤 7-8
 
-6. （仅当用户选择 MCP Server 方式时）把 MCP Server 配置写入 ~/.hermes/config.yaml 的 mcp_servers 段：
+7. （仅当用户选择 MCP Server 方式时）把 MCP Server 配置写入 ~/.hermes/config.yaml 的 mcp_servers 段：
    sinomem:
      args: []
-     command: python -m sinomem.entrypoints.mcp_server
+     command: .venv/bin/python -m sinomem.entrypoints.mcp_server
 
-7. 设置 SINOMEM_HOME 环境变量，追加到 ~/.bashrc 或 ~/.zshrc：
-   export SINOMEM_HOME="$HOME/.local/share/sinomem"
+8. 执行 source ~/.bashrc（或 ~/.zshrc）刷新环境变量，然后运行 sinomem --help 验证 CLI 命令可用。
 
 完成后告诉我安装结果。
 ```
@@ -154,33 +159,37 @@ curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --wi
 ```
 请帮我安装 SinoMem 记忆系统，步骤如下：
 
-1. 克隆仓库并安装
+1. 克隆仓库并创建虚拟环境
    git clone --depth 1 https://github.com/P1M0U/SinoMem.git ~/.local/share/sinomem
    cd ~/.local/share/sinomem
-   pip install -e .
+   python3 -m venv .venv
+   .venv/bin/pip install -e .
 
 2. 验证安装是否成功
-   python -c "from sinomem.core.engine import MemoryEngine; print('ok')"
+   .venv/bin/python -c "from sinomem.core.engine import MemoryEngine; print('ok')"
 
-3. 询问用户是否需要安装嵌入模型（用于语义搜索），给出以下选项让用户选择：
+3. 将 sinomem CLI 加入 PATH，追加到 ~/.bashrc 或 ~/.zshrc：
+   export SINOMEM_HOME="$HOME/.local/share/sinomem"
+   export PATH="$SINOMEM_HOME/.venv/bin:$PATH"
+
+4. 询问用户是否需要安装嵌入模型（用于语义搜索），给出以下选项让用户选择：
    — A. 不安装（默认）— 跳过此步，语义搜索自动降级为关键词搜索
    — B. 安装 embedding 依赖（onnxruntime + sqlite-vec，~200MB）
 
-4. 如果用户选择 B，执行 pip install -e ".[embedding]" 安装依赖。
+5. 如果用户选择 B，执行 .venv/bin/pip install -e ".[embedding]" 安装依赖。
    然后询问是否需要自动下载 ONNX 模型（约 24MB），如果需要则运行：
-   python -c "from sinomem.core.embedder import ensure_model; print('ok' if ensure_model() else 'download failed')"
+   .venv/bin/python -c "from sinomem.core.embedder import ensure_model; print('ok' if ensure_model() else 'download failed')"
 
-5. 询问用户选择安装方式，给出以下选项：
+6. 询问用户选择安装方式，给出以下选项：
    — A. Hermes Memory Provider 插件方式（推荐）— 执行 `ln -s ~/.local/share/sinomem/hermes_plugin/ ~/.hermes/plugins/sinomem`
-   — B. MCP Server 方式 — 继续执行以下步骤 6-7
+   — B. MCP Server 方式 — 继续执行以下步骤 7-8
 
-6. （仅当用户选择 MCP Server 方式时）把 MCP Server 配置写入 ~/.hermes/config.yaml 的 mcp_servers 段：
+7. （仅当用户选择 MCP Server 方式时）把 MCP Server 配置写入 ~/.hermes/config.yaml 的 mcp_servers 段：
    sinomem:
      args: []
-     command: python -m sinomem.entrypoints.mcp_server
+     command: .venv/bin/python -m sinomem.entrypoints.mcp_server
 
-7. 设置 SINOMEM_HOME 环境变量，追加到 ~/.bashrc 或 ~/.zshrc：
-   export SINOMEM_HOME="$HOME/.local/share/sinomem"
+8. 执行 source ~/.bashrc（或 ~/.zshrc）刷新环境变量，然后运行 sinomem --help 验证 CLI 命令可用。
 
 完成后告诉我安装结果。
 ```
@@ -248,7 +257,7 @@ curl -fsSL https://github.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --m
 curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --with-embedding
 ```
 
-> 如需手动安装，可克隆仓库后执行 `pip install -e .`。仓库默认安装到 `~/.local/share/sinomem/`。
+> 如需手动安装，可克隆仓库后执行 `python3 -m venv .venv && .venv/bin/pip install -e .`。仓库默认安装到 `~/.local/share/sinomem/`。安装脚本自动将 `.venv/bin` 加入 PATH，终端刷新后即可直接使用 `sinomem` 命令。
 
 ## 卸载
 
