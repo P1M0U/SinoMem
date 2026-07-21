@@ -8,6 +8,7 @@
 """
 
 import os
+import shutil
 from pathlib import Path
 
 import numpy as np
@@ -19,6 +20,145 @@ from .config import DEFAULT_MODEL_DIR
 # 默认模型仓库（Xenova 预转换 ONNX 格式）
 _DEFAULT_REPO = "Xenova/bge-small-zh-v1.5"
 _DEFAULT_FILES = ["onnx/model_quantized.onnx", "tokenizer.json"]
+
+# 国内 HuggingFace 镜像（中文用户优先使用）
+_MIRROR_HF = "https://hf-mirror.com"
+
+# 快速探测超时（秒），避免在不可达端点上等待过久
+_PROBE_TIMEOUT = 3
+
+
+def _probe_endpoint(
+    endpoint: str | None, timeout: int = _PROBE_TIMEOUT
+) -> bool:
+    """快速探测 HuggingFace 端点是否可达（HEAD 请求 + 短超时）
+
+    Args:
+        endpoint: 端点 URL（None 表示 huggingface.co）
+        timeout: 超时秒数
+
+    Returns:
+        True 表示端点可达，False 表示不可达或超时
+    """
+    import logging
+
+    _log = logging.getLogger(__name__)
+
+    try:
+        import requests
+    except ImportError:
+        # requests 不可用时跳过探测，直接尝试下载
+        return True
+
+    base = endpoint if endpoint else "https://huggingface.co"
+    probe_url = f"{base}/api/status"
+    try:
+        resp = requests.head(probe_url, timeout=timeout)
+        # 2xx/3xx 视为可达
+        return resp.status_code < 400
+    except Exception:
+        label = endpoint or "huggingface.co"
+        _log.info("端点不可达（%ds 超时）: %s", timeout, label)
+        return False
+
+
+def _find_tokenizer_json(target_dir: Path) -> Path | None:
+    """在 target_dir 及其子目录中搜索 tokenizer.json
+
+    处理 tokenizer.json 因历史下载被放在子目录中的情况
+    （如 bge-small-zh-v1.5/tokenizer.json）。
+
+    Args:
+        target_dir: 模型存储目录
+
+    Returns:
+        tokenizer.json 的路径，未找到返回 None
+    """
+    # 优先检查直接路径
+    direct = target_dir / "tokenizer.json"
+    if direct.exists():
+        return direct
+
+    # 搜索一级子目录
+    if target_dir.is_dir():
+        for child in sorted(target_dir.iterdir()):
+            if child.is_dir():
+                candidate = child / "tokenizer.json"
+                if candidate.exists():
+                    return candidate
+
+    return None
+
+
+def _find_onnx_file(target_dir: Path) -> Path | None:
+    """在 target_dir 及其子目录中搜索 ONNX 模型文件
+
+    Args:
+        target_dir: 模型存储目录
+
+    Returns:
+        ONNX 模型文件的路径，未找到返回 None
+    """
+    onnx_dir = target_dir / "onnx"
+    candidates = [
+        onnx_dir / "model_quint8_avx2.onnx",
+        onnx_dir / "model_quantized.onnx",
+        onnx_dir / "model.onnx",
+    ]
+    for c in candidates:
+        if c.exists():
+            return c
+
+    # 也搜索子目录
+    if target_dir.is_dir():
+        for child in sorted(target_dir.iterdir()):
+            if child.is_dir() and child != onnx_dir:
+                for fn in [
+                    "model_quint8_avx2.onnx",
+                    "model_quantized.onnx",
+                    "model.onnx",
+                ]:
+                    candidate = child / "onnx" / fn
+                    if candidate.exists():
+                        return candidate
+
+    return None
+
+
+def _consolidate_model_files(
+    target_dir: Path, found_onnx: Path, found_tokenizer: Path
+) -> bool:
+    """将散落在子目录中的模型文件统一复制到 target_dir 预期位置
+
+    场景：用户之前用不同 local_dir 下载了模型，导致文件分布在子目录中。
+
+    Args:
+        target_dir: 预期的模型根目录
+        found_onnx: 已找到的 ONNX 文件路径
+        found_tokenizer: 已找到的 tokenizer.json 路径
+
+    Returns:
+        True 表示合并完成
+    """
+    import logging
+
+    _log = logging.getLogger(__name__)
+
+    onnx_dir = target_dir / "onnx"
+    onnx_dir.mkdir(parents=True, exist_ok=True)
+
+    dest_onnx = onnx_dir / found_onnx.name
+    dest_tokenizer = target_dir / "tokenizer.json"
+
+    if not dest_onnx.exists() and found_onnx != dest_onnx:
+        _log.info("复制 %s → %s", found_onnx, dest_onnx)
+        shutil.copy2(found_onnx, dest_onnx)
+
+    if not dest_tokenizer.exists():
+        _log.info("复制 %s → %s", found_tokenizer, dest_tokenizer)
+        shutil.copy2(found_tokenizer, dest_tokenizer)
+
+    return True
 
 
 def ensure_model(
@@ -41,47 +181,72 @@ def ensure_model(
     _log = logging.getLogger(__name__)
 
     target_dir = Path(model_dir) if model_dir else DEFAULT_MODEL_DIR
-    onnx_dir = target_dir / "onnx"
-    tokenizer_path = target_dir / "tokenizer.json"
-    candidates = [
-        onnx_dir / "model_quint8_avx2.onnx",
-        onnx_dir / "model_quantized.onnx",
-        onnx_dir / "model.onnx",
-    ]
 
-    # 模型已存在，无需下载
-    if any(c.exists() for c in candidates) and tokenizer_path.exists():
+    # ── 第一步：检查模型文件是否已存在（含子目录容错搜索）──
+    onnx_file = _find_onnx_file(target_dir)
+    tokenizer_file = _find_tokenizer_json(target_dir)
+
+    if onnx_file is not None and tokenizer_file is not None:
+        # 文件存在但散落在子目录中 → 自动合并到预期位置
+        if (
+            onnx_file.parent != target_dir / "onnx"
+            or tokenizer_file.parent != target_dir
+        ):
+            _consolidate_model_files(target_dir, onnx_file, tokenizer_file)
         return True
 
     if files is None:
         files = _DEFAULT_FILES
 
-    # 检查 huggingface_hub 是否可用
+    # ── 第二步：检查 huggingface_hub 是否可用 ──
     try:
         from huggingface_hub import hf_hub_download
     except ImportError:
         _log.warning(
-            "自动下载模型需要 huggingface_hub，请先安装: pip install huggingface_hub"
+            "自动下载模型需要 huggingface_hub，请先安装: "
+            "pip install huggingface_hub"
         )
         return False
 
-    # 构建下载镜像列表：用户配置 > huggingface.co > hf-mirror.com 兜底
-    _MIRROR_FALLBACK = "https://hf-mirror.com"
-    endpoints = []  # None 表示默认 huggingface.co
+    # ── 第三步：构建端点列表（国内镜像优先）──
+    endpoints: list[str | None] = []
     if "HF_ENDPOINT" in os.environ:
         endpoints.append(os.environ["HF_ENDPOINT"])
         _log.info("使用 HF 镜像: %s", endpoints[0])
     else:
-        endpoints.append(None)  # 默认 huggingface.co
-        endpoints.append(_MIRROR_FALLBACK)  # 国内镜像兜底
+        # 国内用户优先走 hf-mirror.com，不可达再回退 huggingface.co
+        endpoints.append(_MIRROR_HF)
+        endpoints.append(None)
+
+    # ── 第四步：快速探测 + 下载 ──
+    # 跳过不可达的端点（短超时探测，避免 hf_hub_download 长重试）
+    reachable = []
+    for ep in endpoints:
+        label = ep or "huggingface.co"
+        if _probe_endpoint(ep):
+            reachable.append(ep)
+            _log.info("✓ 端点可达: %s", label)
+        else:
+            _log.warning("✗ 端点不可达，跳过: %s", label)
+
+    if not reachable:
+        _log.error(
+            "所有端点均不可达，无法下载模型。"
+            "请设置环境变量后重试: export HF_ENDPOINT=https://hf-mirror.com"
+        )
+        return False
+
+    # 下载时使用较短超时（避免单个端点卡死过久）
+    os.environ.setdefault("HF_HUB_DOWNLOAD_TIMEOUT", "8")
 
     _log.info("正在自动下载嵌入模型 %s → %s ...", repo, target_dir)
-    success = True
     for filename in files:
         downloaded = False
         last_error = None
-        for endpoint in endpoints:
+        for endpoint in reachable:
+            label = endpoint or "huggingface.co"
             try:
+                _log.info("  下载 %s（通过 %s）...", filename, label)
                 hf_hub_download(
                     repo_id=repo,
                     filename=filename,
@@ -89,23 +254,19 @@ def ensure_model(
                     endpoint=endpoint,
                 )
                 downloaded = True
+                _log.info("  ✓ %s", filename)
                 break
             except Exception as e:
                 last_error = e
-                if endpoint is not None:
-                    _log.debug(
-                        "  %s 从 %s 下载失败，尝试下一个镜像...",
-                        filename,
-                        endpoint,
-                    )
+                _log.debug("  %s 从 %s 下载失败: %s", filename, label, e)
                 continue
-        if downloaded:
-            _log.info("  ✓ %s", filename)
-        else:
+        if not downloaded:
             _log.error("  ✗ %s 下载失败: %s", filename, last_error)
-            success = False
 
-    return success
+    # 检查最终是否就绪
+    onnx_ok = _find_onnx_file(target_dir) is not None
+    tokenizer_ok = _find_tokenizer_json(target_dir) is not None
+    return onnx_ok and tokenizer_ok
 
 
 def _count_session_inputs(session: ort.InferenceSession) -> int:
@@ -158,37 +319,21 @@ class Embedder:
     def _load(self):
         """加载模型和分词器。
 
-        MiniLM 优先加载量化版 model_quint8_avx2.onnx（~113MB），
-        BGE 优先加载 model_quantized.onnx（~24MB），
-        都不存在则回退到 model.onnx（fp32，较大）。
+        使用 _find_onnx_file / _find_tokenizer_json 多路径搜索，
+        支持历史下载散落在子目录中的场景。
         """
         import logging
 
         _log = logging.getLogger(__name__)
 
-        onnx_path = self.model_dir / "onnx"
-
-        # 按优先级依次尝试
-        candidates = [
-            onnx_path / "model_quint8_avx2.onnx",  # MiniLM 量化版 ~113MB
-            onnx_path
-            / "model_quantized.onnx",  # BGE 量化版 ~24MB / 通用量化版
-            onnx_path / "model.onnx",  # fp32 兜底
-        ]
-        model_file = None
-        for candidate in candidates:
-            if candidate.exists():
-                model_file = candidate
-                break
-
+        # 多路径搜索 ONNX 模型文件
+        model_file = _find_onnx_file(self.model_dir)
         if model_file is None:
+            onnx_path = self.model_dir / "onnx"
             raise FileNotFoundError(
-                f"ONNX 模型未找到: {onnx_path}\n"
-                f"请运行以下命令下载模型到 {onnx_path}/ 目录:\n"
+                f"ONNX 模型未找到，请下载到 {onnx_path}/ 目录。\n"
                 "  pip install huggingface_hub\n"
-                '  python -c "from huggingface_hub import hf_hub_download; '
-                f"hf_hub_download('Xenova/bge-small-zh-v1.5', 'onnx/model_quantized.onnx', local_dir='{self.model_dir}'); "
-                f"hf_hub_download('Xenova/bge-small-zh-v1.5', 'tokenizer.json', local_dir='{self.model_dir}')\"\n"
+                f"  python -c \"from agent_memory_lite.core.embedder import ensure_model; ensure_model('{self.model_dir}')\"\n"
                 "国内用户下载前请先设置: export HF_ENDPOINT=https://hf-mirror.com"
             )
 
@@ -201,10 +346,14 @@ class Embedder:
             providers=["CPUExecutionProvider"],
         )
 
-        # 加载分词器
-        tokenizer_path = self.model_dir / "tokenizer.json"
-        if not tokenizer_path.exists():
-            raise FileNotFoundError(f"tokenizer.json 未找到: {tokenizer_path}")
+        # 多路径搜索分词器
+        tokenizer_path = _find_tokenizer_json(self.model_dir)
+        if tokenizer_path is None:
+            raise FileNotFoundError(
+                f"tokenizer.json 未找到: {self.model_dir}\n"
+                "请设置 HF_ENDPOINT 后重新下载: "
+                "export HF_ENDPOINT=https://hf-mirror.com"
+            )
 
         self._tokenizer = Tokenizer.from_file(str(tokenizer_path))
 

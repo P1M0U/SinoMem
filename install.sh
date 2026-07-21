@@ -221,6 +221,7 @@ ENV_BLOCK_END="# <<< Agent Memory Lite <<<"
 ENV_CONTENT="${ENV_BLOCK_START}
 export AML_HOME=\"${INSTALL_DIR}\"
 export PATH=\"\${AML_HOME}/.venv/bin:\${PATH}\"
+export HF_ENDPOINT=\"https://hf-mirror.com\"
 ${ENV_BLOCK_END}"
 
 if grep -q "$ENV_BLOCK_START" "$SHELL_RC" 2>/dev/null; then

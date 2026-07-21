@@ -20,11 +20,13 @@ def _row_to_dict(row, score: float | None = None) -> dict:
 
 
 def update_access(conn: sqlite3.Connection, rows: list) -> None:
-    """批量更新访问计数（供 MemoryStore 和 SearchEngine 共用）"""
-    for row in rows:
-        conn.execute(
-            "UPDATE memories SET access_count = access_count + 1, "
-            "last_accessed = CURRENT_TIMESTAMP WHERE id = ?",
-            (row["id"],),
-        )
+    """批量更新访问计数（executemany，单次 commit）"""
+    if not rows:
+        return
+    ids = [(row["id"],) for row in rows]
+    conn.executemany(
+        "UPDATE memories SET access_count = access_count + 1, "
+        "last_accessed = CURRENT_TIMESTAMP WHERE id = ?",
+        ids,
+    )
     conn.commit()

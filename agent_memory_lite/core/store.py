@@ -47,19 +47,6 @@ def _parse_ttl(ttl: str | None) -> str | None:
     )
 
 
-def _iso_to_dt(ts: str | None):
-    """将 ISO 时间戳转为 datetime（宽松解析）"""
-    if not ts:
-        return None
-    try:
-        # 尝试标准格式
-        return datetime.fromisoformat(
-            ts.replace("Z", "+00:00").replace(" ", "T")
-        )
-    except (ValueError, TypeError):
-        return None
-
-
 def _retry_on_lock(max_retries: int = 3, base_delay: float = 0.05):
     """SQLite 写锁重试装饰器（busy_timeout 之外的兜底保护）
 
@@ -378,14 +365,17 @@ class MemoryStore:
 
     @_retry_on_lock()
     def reindex_fts(self) -> dict:
-        """重新分词所有记忆并重建 FTS5 索引"""
+        """重新分词所有记忆并重建 FTS5 索引
+
+        先构建全部行（含分词），再在事务内原子替换 FTS5 内容。
+        若分词阶段异常则不触及 FTS5，避免中途崩溃导致索引丢失。
+        """
         logger.info("重建 FTS5 索引...")
         memories = self.conn.execute(
             "SELECT id, content, tags, category FROM memories"
         ).fetchall()
 
-        # 先清空再批量插入（N+1 次 SQL vs 原来 2N 次）
-        self.conn.execute("DELETE FROM memories_fts")
+        # 先构建所有行（分词在此阶段，异常时 FTS5 仍完整）
         rows = [
             (
                 m["id"],
@@ -395,12 +385,21 @@ class MemoryStore:
             )
             for m in memories
         ]
-        self.conn.executemany(
-            "INSERT INTO memories_fts (rowid, content, tags, category)"
-            " VALUES (?, ?, ?, ?)",
-            rows,
-        )
-        self.conn.commit()
+
+        # 事务内原子替换：DELETE + INSERT 在同一个 commit 内
+        try:
+            self.conn.execute("DELETE FROM memories_fts")
+            self.conn.executemany(
+                "INSERT INTO memories_fts (rowid, content, tags, category)"
+                " VALUES (?, ?, ?, ?)",
+                rows,
+            )
+            self.conn.commit()
+        except Exception:
+            self.conn.rollback()
+            logger.error("FTS5 重建失败，已回滚")
+            raise
+
         logger.info("FTS5 重建完成: %d 条", len(rows))
         return {"reindexed": len(rows)}
 
@@ -602,7 +601,7 @@ class MemoryStore:
                 ids.append(-1)  # 占位，后续用真实 id 回填
                 new_items.append((i, p))
 
-        # ── 4. 批量写入新条目（单事务）──
+        # ── 4. 批量写入新条目（单事务，RETURNING id）──
         if new_items:
             main_rows = [
                 (
@@ -615,18 +614,20 @@ class MemoryStore:
                 for _, p in new_items
             ]
 
-            self.conn.executemany(
-                "INSERT INTO memories (content, category, tags, "
-                "importance, expires_at) VALUES (?, ?, ?, ?, ?)",
-                main_rows,
-            )
+            # 单条多行 INSERT + RETURNING id（消除 last_insert_rowid 竞态）
+            # executemany 不支持 RETURNING，改用多 VALUES 子句
+            placeholders = ", ".join("(?, ?, ?, ?, ?)" for _ in new_items)
+            flat_values = []
+            for row in main_rows:
+                flat_values.extend(row)
 
-            # 用 last_insert_rowid 反推新 id（避免 SELECT MAX 竞争）
-            new_count = len(new_items)
-            last_id = self.conn.execute(
-                "SELECT last_insert_rowid()"
-            ).fetchone()[0]
-            new_ids = list(range(last_id - new_count + 1, last_id + 1))
+            cursor = self.conn.execute(
+                f"INSERT INTO memories (content, category, tags, "
+                f"importance, expires_at) VALUES {placeholders} "
+                f"RETURNING id",
+                flat_values,
+            )
+            new_ids = [row[0] for row in cursor.fetchall()]
 
             # 回填占位
             for j, (orig_idx, _) in enumerate(new_items):
@@ -670,8 +671,8 @@ class MemoryStore:
             self.conn.commit()
             logger.info(
                 "批量存储完成: %d 条新增, %d 条跳过",
-                new_count,
-                len(processed) - new_count,
+                len(new_ids),
+                len(processed) - len(new_ids),
             )
         else:
             self.conn.commit()

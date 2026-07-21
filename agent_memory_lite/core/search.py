@@ -1,6 +1,5 @@
 """记忆搜索层（关键词 + 语义 + 混合，RRF 融合）"""
 
-import contextlib
 import sqlite3
 
 from .logger import get_logger, timed
@@ -69,13 +68,23 @@ class SearchEngine:
 
     # ── P1: RRF 混合搜索 ──
 
-    def _hybrid_rrf_search(self, query: str, limit: int) -> list[dict]:
+    def _hybrid_rrf_search(
+        self,
+        query: str,
+        limit: int,
+        embedding: list[float] | None = None,
+    ) -> list[dict]:
         """RRF（Reciprocal Rank Fusion）混合搜索
 
         对关键词和语义两路结果分别按排名归一化后合并排序，
         消除两路得分的量纲不一致问题。
 
         公式: RRF(d) = sum(1 / (K + rank_i(d))) for each list i
+
+        Args:
+            query: 搜索文本（embedding 不为 None 时可忽略）
+            limit: 返回条数
+            embedding: 预计算的查询向量（为 None 时实时编码）
         """
         with timed(logger, "hybrid_rrf_search"):
             if not self._has_vec() or not self._embedder:
@@ -89,7 +98,7 @@ class SearchEngine:
                 query, rrf_limit, update=False
             )
             sem_results = self._semantic_search_raw(
-                query, rrf_limit, update=False
+                query, rrf_limit, update=False, embedding=embedding
             )
 
             # RRF 排名融合: RRF(d) = 1/(K+rank) for each list
@@ -158,16 +167,28 @@ class SearchEngine:
         ]
 
     def _semantic_search_raw(
-        self, query: str, limit: int, update: bool = False
+        self,
+        query: str = "",
+        limit: int = 5,
+        update: bool = False,
+        embedding: list[float] | None = None,
     ) -> list[dict]:
-        """语义搜索（不更新访问计数）"""
+        """语义搜索（不更新访问计数）
+
+        Args:
+            query: 搜索文本（embedding 不为 None 时可传空串）
+            limit: 返回条数
+            update: 是否更新访问计数
+            embedding: 预计算的查询向量（为 None 时用 query 实时编码）
+        """
         if not self._has_vec() or not self._embedder:
             return []
 
-        query_embedding = self._embedder.embed(query)
+        if embedding is None:
+            embedding = self._embedder.embed(query)
         import numpy as np
 
-        query_bytes = np.array(query_embedding, dtype=np.float32).tobytes()
+        query_bytes = np.array(embedding, dtype=np.float32).tobytes()
 
         rows = self.conn.execute(
             """
@@ -192,7 +213,7 @@ class SearchEngine:
         self,
         queries: list[dict],
     ) -> list[dict]:
-        """批量搜索（语义模式使用 embed_batch 一次推理）
+        """批量搜索（语义查询一次 embed_batch 避免重复推理）
 
         Args:
             queries: [{"query": "...", "mode": "keyword", "limit": 5}, ...]
@@ -201,9 +222,9 @@ class SearchEngine:
         """
         results = []
 
-        # 将语义查询收集起来，一次 embed_batch 推理
-        semantic_queries = []
-        semantic_indices = []
+        # ── 1. 收集语义/混合查询，一次 embed_batch 预推理 ──
+        semantic_indices: list[int] = []
+        semantic_queries: list[str] = []
         for i, q in enumerate(queries):
             mode = q.get("mode", "keyword")
             if (
@@ -214,19 +235,38 @@ class SearchEngine:
                 semantic_queries.append(q["query"])
                 semantic_indices.append(i)
 
-        # 预批量推理（为未来的语义优化做准备）
-        _batch_embeddings = None
+        # 预批量推理：embed_batch 仅一次 ONNX 调用
+        batch_embeddings: list[list[float]] | None = None
         if semantic_queries:
-            with contextlib.suppress(Exception):
-                _batch_embeddings = self._embedder.embed_batch(
-                    semantic_queries
-                )
+            batch_embeddings = self._embedder.embed_batch(semantic_queries)
 
-        for q in queries:
+        # 构建 index → embedding 映射
+        idx_embedding = {}
+        if batch_embeddings:
+            for j, idx in enumerate(semantic_indices):
+                idx_embedding[idx] = batch_embeddings[j]
+
+        # ── 2. 逐条执行 ──
+        for i, q in enumerate(queries):
             query = q["query"]
             mode = q.get("mode", "keyword")
             limit = q.get("limit", 5)
-            results.append(self.search(query, mode=mode, limit=limit))
+            emb = idx_embedding.get(i)
+
+            if emb is not None:
+                # 使用预计算 embedding，避免重复 ONNX 推理
+                if mode == "semantic":
+                    results.append(
+                        self._semantic_search_raw(
+                            query, limit, update=True, embedding=emb
+                        )
+                    )
+                else:  # hybrid
+                    results.append(
+                        self._hybrid_rrf_search(query, limit, embedding=emb)
+                    )
+            else:
+                results.append(self.search(query, mode=mode, limit=limit))
 
         logger.info("批量搜索完成: %d 个查询", len(queries))
         return results

@@ -11,11 +11,19 @@ class TestStoreCRUD:
         assert item["content"] == "测试记忆内容"
         assert item["category"] == "general"
 
+    def test_get_nonexistent(self, engine):
+        """获取不存在的 id 返回 None"""
+        assert engine.get(99999) is None
+
     def test_update_content(self, engine):
         mid = engine.store("原始内容")
         ok = engine.update(mid, content="更新后内容")
         assert ok is True
         assert engine.get(mid)["content"] == "更新后内容"
+
+    def test_update_nonexistent(self, engine):
+        """更新不存在的 id 返回 False"""
+        assert engine.update(99999, content="不会成功") is False
 
     def test_update_category(self, engine):
         mid = engine.store("测试", category="general")
@@ -28,6 +36,10 @@ class TestStoreCRUD:
         ok = engine.delete(mid)
         assert ok is True
         assert engine.get(mid) is None
+
+    def test_delete_nonexistent(self, engine):
+        """删除不存在的 id 返回 False"""
+        assert engine.delete(99999) is False
 
     def test_list_by_category(self, engine):
         engine.store("a", category="tool")

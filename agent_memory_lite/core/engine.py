@@ -256,16 +256,14 @@ class MemoryEngine:
 
         from .tokenizer import tokenize
 
-        # 使用参数化查询，根据 already_expired 构造过期时间
-        if already_expired:
-            expires_sql = "datetime('now', '-1 day')"
-        else:
-            expires_sql = "datetime('now', '+30 days')"
+        # 参数化查询：时间偏移量作为 SQL 参数传入
+        # 避免 SQL 字符串拼接，符合安全编码规范
+        offset = "-1 day" if already_expired else "+30 days"
 
         cursor = self._conn.execute(
             "INSERT INTO memories (content, category, tags, expires_at) "
-            "VALUES (?, ?, ?, " + expires_sql + ")",
-            (content, category, tags_json),
+            "VALUES (?, ?, ?, datetime('now', ?))",
+            (content, category, tags_json, offset),
         )
         row_id = cursor.lastrowid
 

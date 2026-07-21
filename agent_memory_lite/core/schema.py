@@ -54,6 +54,9 @@ def run_migrations(conn) -> None:
 
     迁移链：
         v0 → v1: 新增 importance / expires_at 字段 + schema_version 表
+
+    迁移函数只做 DDL 变更，不写版本号。
+    版本号由本函数统一写入（INSERT OR REPLACE），避免重复插入。
     """
     # 查询当前版本
     try:
@@ -65,13 +68,13 @@ def run_migrations(conn) -> None:
         current = 0
 
     if current < 1:
-        # v1 迁移: 新增字段 + schema_version 表
         _migrate_v1(conn)
         current = 1
 
     if current < SCHEMA_VERSION:
+        # 统一写入最新版本号（INSERT OR REPLACE 避免重复）
         conn.execute(
-            "INSERT INTO schema_version (version) VALUES (?)",
+            "INSERT OR REPLACE INTO schema_version (version) VALUES (?)",
             (SCHEMA_VERSION,),
         )
         conn.commit()
@@ -104,8 +107,9 @@ def _migrate_v1(conn) -> None:
 
     # 创建 schema_version 表（如果尚未存在）
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL)"
+        "CREATE TABLE IF NOT EXISTS schema_version "
+        "(version INTEGER NOT NULL UNIQUE)"
     )
-    conn.execute("INSERT INTO schema_version (version) VALUES (1)")
+    # 版本号由 run_migrations() 统一写入，此处不做 INSERT
     conn.commit()
     logger.info("数据库迁移 v0 → v1 完成")
