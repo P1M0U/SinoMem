@@ -242,6 +242,36 @@ cd ~/.local/share/sinomem
 pip install -e .
 ```
 
+## Uninstall
+
+A one-liner uninstall script is provided to cleanly remove SinoMem and all related configurations:
+
+```bash
+# GitHub
+curl -fsSL https://github.com/P1M0U/SinoMem/raw/main/uninstall.sh | bash
+
+# Gitee (faster in China)
+curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/uninstall.sh | bash
+
+# Or run locally (after cloning the repo)
+bash uninstall.sh
+```
+
+**What gets cleaned up:**
+
+| Step | Item | Details |
+|------|------|---------|
+| pip package | sinomem | Uninstalls from both system pip and Hermes venv |
+| Install directory | `~/.local/share/sinomem/` | Removes all project files |
+| Environment variables | SINOMEM_HOME / PATH / HF_ENDPOINT | Removes from `.bashrc` / `.zshrc` / `.profile` |
+| Hermes plugin | `~/.hermes/plugins/sinomem` | Removes symlink |
+| Memory database | `~/.sinomem/memory.db` | **Interactive prompt** — keep or delete |
+| Hermes deps | jieba / tokenizers | Uninstalls from Hermes venv (installed by install.sh) |
+| Claude Code hooks | `settings.local.json` | Detects and prompts for cleanup (stale hooks cause errors) |
+| jieba cache | `~/.cache/jieba` | Asks before cleaning |
+
+> 💡 Before deleting the database, the script shows memory count and file size, and requires a second confirmation. You can keep the database and reuse it after reinstalling.
+
 ## Manual Hermes MCP Config
 
 Add to `~/.hermes/config.yaml` under `mcp_servers:`:

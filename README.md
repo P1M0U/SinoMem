@@ -250,6 +250,36 @@ curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --wi
 
 > 如需手动安装，可克隆仓库后执行 `pip install -e .`。仓库默认安装到 `~/.local/share/sinomem/`。
 
+## 卸载
+
+提供一键卸载脚本，可干净移除 SinoMem 及其所有相关配置：
+
+```bash
+# 国内用户（Gitee）
+curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/uninstall.sh | bash
+
+# GitHub 用户
+curl -fsSL https://github.com/P1M0U/SinoMem/raw/main/uninstall.sh | bash
+
+# 或本地执行（克隆仓库后）
+bash uninstall.sh
+```
+
+**卸载内容：**
+
+| 步骤 | 清理项 | 说明 |
+|------|--------|------|
+| pip 包 | sinomem | 系统 pip + Hermes venv 双重卸载 |
+| 安装目录 | `~/.local/share/sinomem/` | 删除全部项目文件 |
+| 环境变量 | SINOMEM_HOME / PATH / HF_ENDPOINT | 从 `.bashrc` / `.zshrc` / `.profile` 中移除 |
+| Hermes 插件 | `~/.hermes/plugins/sinomem` | 移除符号链接 |
+| 记忆数据库 | `~/.sinomem/memory.db` | **交互式询问**，可选择保留或删除 |
+| Hermes 依赖 | jieba / tokenizers | 卸载 install.sh 安装到 Hermes venv 的依赖 |
+| Claude Code hooks | `settings.local.json` | 检测并提示清理（卸载后残留 hooks 会报错） |
+| jieba 缓存 | `~/.cache/jieba` | 询问是否清理 |
+
+> 💡 卸载记忆数据库前会显示记忆条数和文件大小，并需要二次确认。重新安装后可继续使用保留的数据库。
+
 ## 下载嵌入模型（可选，用于语义搜索）
 
 本项目支持两种嵌入模型，根据你的场景选择其中一个下载即可（系统会自动识别模型类型）：

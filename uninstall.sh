@@ -9,11 +9,14 @@
 #   bash uninstall.sh
 #
 # 卸载内容:
-#   1. pip 卸载 sinomem 包
+#   1. pip 卸载 sinomem 包（系统 + Hermes venv）
 #   2. 删除安装目录 ~/.local/share/sinomem/
 #   3. 清理 shell 环境变量（SINOMEM_HOME / PATH / HF_ENDPOINT）
 #   4. 移除 Hermes 插件符号链接
 #   5. 询问是否保留记忆数据库文件
+#   6. 卸载 Hermes venv 中的 jieba / tokenizers 依赖
+#   7. 清理 Claude Code hooks 配置
+#   8. 询问是否清理 jieba 缓存
 # =============================================================================
 
 set -euo pipefail
@@ -42,7 +45,7 @@ echo ""
 # ══════════════════════════════════════════════════════════════════════════════
 # 步骤 1: pip 卸载
 # ══════════════════════════════════════════════════════════════════════════════
-echo -e "${BOLD}[1/5]${NC} pip 卸载 sinomem..."
+echo -e "${BOLD}[1/7]${NC} pip 卸载 sinomem..."
 
 # 系统 pip 卸载
 UNINSTALLED=0
@@ -87,7 +90,7 @@ echo ""
 # ══════════════════════════════════════════════════════════════════════════════
 # 步骤 2: 删除安装目录
 # ══════════════════════════════════════════════════════════════════════════════
-echo -e "${BOLD}[2/5]${NC} 删除安装目录..."
+echo -e "${BOLD}[2/7]${NC} 删除安装目录..."
 
 if [ -d "$INSTALL_DIR" ]; then
     echo -e "  目录: ${INSTALL_DIR}"
@@ -102,7 +105,7 @@ echo ""
 # ══════════════════════════════════════════════════════════════════════════════
 # 步骤 3: 清理 shell 环境变量
 # ══════════════════════════════════════════════════════════════════════════════
-echo -e "${BOLD}[3/5]${NC} 清理 shell 环境变量..."
+echo -e "${BOLD}[3/7]${NC} 清理 shell 环境变量..."
 
 ENV_BLOCK_START="# >>> SinoMem >>>"
 ENV_BLOCK_END="# <<< SinoMem <<<"
@@ -132,7 +135,7 @@ echo ""
 # ══════════════════════════════════════════════════════════════════════════════
 # 步骤 4: 移除 Hermes 插件符号链接
 # ══════════════════════════════════════════════════════════════════════════════
-echo -e "${BOLD}[4/5]${NC} 移除 Hermes 插件..."
+echo -e "${BOLD}[4/7]${NC} 移除 Hermes 插件..."
 
 if [ -L "$HERMES_PLUGIN_LINK" ]; then
     echo -e "  移除符号链接: ${HERMES_PLUGIN_LINK}"
@@ -151,7 +154,7 @@ echo ""
 # ══════════════════════════════════════════════════════════════════════════════
 # 步骤 5: 记忆数据库 — 询问用户
 # ══════════════════════════════════════════════════════════════════════════════
-echo -e "${BOLD}[5/5]${NC} 记忆数据库..."
+echo -e "${BOLD}[5/7]${NC} 记忆数据库..."
 
 DB_EXISTS=false
 if [ -f "$DB_PATH" ]; then
@@ -218,19 +221,88 @@ fi
 echo ""
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 额外清理（静默）
+# 步骤 6: 清理 Hermes venv 中由 install.sh 安装的依赖
 # ══════════════════════════════════════════════════════════════════════════════
+echo -e "${BOLD}[6/7]${NC} 清理 Hermes venv 依赖..."
 
-# pip 缓存中可能残留的 sinomem 构建文件
-pip_cache_clean() {
-    for pip_cmd in pip3 pip; do
-        if command -v "$pip_cmd" &>/dev/null; then
-            "$pip_cmd" cache purge 2>/dev/null || true
-            return
+HERMES_DEPS_CLEANED=0
+if [ -n "$HERMES_VENV" ]; then
+    HERMES_PIP="$HERMES_VENV/bin/pip"
+    for pkg in jieba tokenizers; do
+        if "$HERMES_PIP" show "$pkg" &>/dev/null 2>&1; then
+            echo -e "  卸载 Hermes venv 中的 ${pkg}..."
+            "$HERMES_PIP" uninstall -y "$pkg" 2>/dev/null && HERMES_DEPS_CLEANED=1 || true
         fi
     done
-}
-pip_cache_clean
+fi
+
+if [ "$HERMES_DEPS_CLEANED" -eq 1 ]; then
+    echo -e "  ${GREEN}✓${NC} Hermes venv 依赖已清理"
+else
+    echo -e "  ${YELLOW}!${NC} 未检测到 Hermes venv 中的额外依赖，跳过"
+fi
+
+echo ""
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 步骤 7: 清理 Claude Code hooks（install_claude_code.sh 安装的）
+# ══════════════════════════════════════════════════════════════════════════════
+echo -e "${BOLD}[7/7]${NC} 检查 Claude Code hooks..."
+
+CC_CLEANED=0
+for cc_dir in "$HOME/.claude" "$(pwd)/.claude"; do
+    CC_SETTINGS="$cc_dir/settings.local.json"
+    if [ -f "$CC_SETTINGS" ] && grep -q "sinomem" "$CC_SETTINGS" 2>/dev/null; then
+        echo ""
+        echo -e "  ${YELLOW}╔══════════════════════════════════════════╗${NC}"
+        echo -e "  ${YELLOW}║  检测到 Claude Code hooks 引用 sinomem    ║${NC}"
+        echo -e "  ${YELLOW}╠══════════════════════════════════════════╣${NC}"
+        echo -e "  ${YELLOW}║${NC}  文件: ${CC_SETTINGS}"
+        echo -e "  ${YELLOW}╚══════════════════════════════════════════╝${NC}"
+        echo ""
+        echo -e "  ${BOLD}是否清理 Claude Code hooks 配置？${NC}"
+        echo -e "  （卸载后残留 hooks 会导致 Claude Code 报错）"
+        echo -ne "  清理 hooks？[Y/n] "
+
+        read -r cc_answer </dev/tty || cc_answer="y"
+
+        if [ "$cc_answer" = "n" ] || [ "$cc_answer" = "N" ]; then
+            echo -e "  ${YELLOW}!${NC} 已跳过，请手动清理: ${CC_SETTINGS}"
+        else
+            # 备份后删除
+            cp "$CC_SETTINGS" "${CC_SETTINGS}.bak.$(date +%Y%m%d_%H%M%S)"
+            rm "$CC_SETTINGS"
+            echo -e "  ${GREEN}✓${NC} Claude Code hooks 已清理（原文件已备份）"
+            CC_CLEANED=1
+        fi
+    fi
+done
+
+if [ "$CC_CLEANED" -eq 0 ]; then
+    echo -e "  ${YELLOW}!${NC} 未检测到 Claude Code hooks 引用 sinomem，跳过"
+fi
+
+echo ""
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 额外清理（静默 + 可选）
+# ══════════════════════════════════════════════════════════════════════════════
+
+# jieba 缓存（由 jieba 分词库在运行时自动创建）
+if [ -d "$JIEBA_CACHE" ]; then
+    JIEBA_CACHE_SIZE=$(du -sh "$JIEBA_CACHE" 2>/dev/null | cut -f1)
+    echo -e "  ${YELLOW}!${NC} 检测到 jieba 分词缓存: ${JIEBA_CACHE} (${JIEBA_CACHE_SIZE})"
+    echo -e "  （此缓存由 jieba 库自动创建，其他程序也可能使用）"
+    echo -ne "  是否清理？[y/N] "
+    read -r jieba_answer </dev/tty || jieba_answer="n"
+    if [ "$jieba_answer" = "y" ] || [ "$jieba_answer" = "Y" ]; then
+        rm -rf "$JIEBA_CACHE"
+        echo -e "  ${GREEN}✓${NC} jieba 缓存已清理"
+    else
+        echo -e "  ${YELLOW}!${NC} 已保留 jieba 缓存"
+    fi
+    echo ""
+fi
 
 # ── 完成 ──
 echo -e "${GREEN}╔══════════════════════════════════════════╗${NC}"
@@ -243,6 +315,8 @@ echo "  ✓ pip 包 (sinomem)"
 echo "  ✓ 安装目录 (${INSTALL_DIR})"
 echo "  ✓ shell 环境变量 (SINOMEM_HOME / PATH / HF_ENDPOINT)"
 echo "  ✓ Hermes 插件链接"
+echo "  ✓ Hermes venv 依赖 (jieba / tokenizers)"
+echo "  ✓ Claude Code hooks"
 echo "  ────────────────────────────────────────────"
 echo ""
 echo -e "  ${BOLD}提示：${NC}"
