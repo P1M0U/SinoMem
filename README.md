@@ -2,7 +2,7 @@
 
 [English](README_EN.md) | 中文
 
-> v0.6.8
+> v0.6.9
 
 ![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-FTS5-003B57?logo=sqlite&logoColor=white)
