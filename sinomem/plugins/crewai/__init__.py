@@ -95,7 +95,3 @@ class SinoCrewMemory(BasePlugin):
     def reset(self) -> None:
         """重置会话上下文"""
         self._session_context = ""
-
-
-# 向后兼容别名（v0.7.x 旧名，后续版本将移除）
-AMLCrewMemory = SinoCrewMemory

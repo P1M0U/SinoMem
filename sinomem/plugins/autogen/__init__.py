@@ -105,7 +105,3 @@ class SinoAutoGenMemory(BasePlugin):
         """清空记忆（依赖 MemoryEngine.delete_all()）"""
         engine = self._get_engine()
         engine.delete_all()
-
-
-# 向后兼容别名（v0.7.x 旧名，后续版本将移除）
-AMLAutoGenMemory = SinoAutoGenMemory

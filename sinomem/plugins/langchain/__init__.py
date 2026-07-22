@@ -142,8 +142,3 @@ class SinoLangChainChatMemory(SinoMemory):
                     tags=["langchain-chat", f"session-{self.session_id}"],
                     importance=0.5,
                 )
-
-
-# 向后兼容别名（v0.7.x 旧名，后续版本将移除）
-AMLMemory = SinoMemory
-AMLLangChainChatMemory = SinoLangChainChatMemory
