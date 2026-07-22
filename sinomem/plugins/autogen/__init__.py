@@ -9,9 +9,9 @@ AutoGen 的 memory_provider 接口在每轮对话前后自动调用：
 - query_memory(): 对话前检索相关记忆
 
 使用方式：
-    from sinomem.plugins.autogen import AMLAutoGenMemory
+    from sinomem.plugins.autogen import SinoAutoGenMemory
 
-    memory = AMLAutoGenMemory()
+    memory = SinoAutoGenMemory()
     assistant = AssistantAgent(
         name="assistant",
         memory_provider=memory,  # ← 一行接入
@@ -24,7 +24,7 @@ from typing import Any
 from ..base import BasePlugin
 
 
-class AMLAutoGenMemory(BasePlugin):
+class SinoAutoGenMemory(BasePlugin):
     """AutoGen 兼容的自动记忆组件
 
     实现 AutoGen memory_provider 接口：
@@ -105,3 +105,7 @@ class AMLAutoGenMemory(BasePlugin):
         """清空记忆（依赖 MemoryEngine.delete_all()）"""
         engine = self._get_engine()
         engine.delete_all()
+
+
+# 向后兼容别名（v0.7.x 旧名，后续版本将移除）
+AMLAutoGenMemory = SinoAutoGenMemory

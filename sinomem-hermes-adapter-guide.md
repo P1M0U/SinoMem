@@ -122,7 +122,7 @@ Tools: memory_search, memory_store, memory_list
 /test memory add "测试记忆：这是一条测试自动同步功能的记忆"
 ```
 
-然后检查 AML 数据库：
+然后检查 SinoMem 数据库：
 
 ```bash
 sqlite3 ~/.sinomem/memory.db "SELECT * FROM memories ORDER BY id DESC LIMIT 1;"
@@ -190,7 +190,7 @@ SinoMem 默认已配置 WAL。
 
 ### 问题 4：on_memory_write 未触发
 
-**症状：** 内置 memory 工具写入后，AML 数据库中找不到对应记录
+**症状：** 内置 memory 工具写入后，SinoMem 数据库中找不到对应记录
 
 **原因：**
 1. 适配器未正确注册为 provider

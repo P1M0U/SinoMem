@@ -226,25 +226,25 @@ bash installers/install_claude_code.sh
 ### LangChain（一行接入）
 
 ```python
-from sinomem.plugins.langchain import AMLMemory
+from sinomem.plugins.langchain import SinoMemory
 
-agent = create_react_agent(llm, tools, memory=AMLMemory())
+agent = create_react_agent(llm, tools, memory=SinoMemory())
 ```
 
 ### CrewAI（一行接入）
 
 ```python
-from sinomem.plugins.crewai import AMLCrewMemory
+from sinomem.plugins.crewai import SinoCrewMemory
 
-crew = Crew(agents=[...], tasks=[...], memory=AMLCrewMemory())
+crew = Crew(agents=[...], tasks=[...], memory=SinoCrewMemory())
 ```
 
 ### AutoGen（一行接入）
 
 ```python
-from sinomem.plugins.autogen import AMLAutoGenMemory
+from sinomem.plugins.autogen import SinoAutoGenMemory
 
-assistant = AssistantAgent(name="agent", memory_provider=AMLAutoGenMemory())
+assistant = AssistantAgent(name="agent", memory_provider=SinoAutoGenMemory())
 ```
 
 ### 通用 Python API

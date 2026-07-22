@@ -226,25 +226,25 @@ Installs 3 hooks: inject memory context before prompts, capture writes, and pers
 ### LangChain (one-line import)
 
 ```python
-from sinomem.plugins.langchain import AMLMemory
+from sinomem.plugins.langchain import SinoMemory
 
-agent = create_react_agent(llm, tools, memory=AMLMemory())
+agent = create_react_agent(llm, tools, memory=SinoMemory())
 ```
 
 ### CrewAI (one-line import)
 
 ```python
-from sinomem.plugins.crewai import AMLCrewMemory
+from sinomem.plugins.crewai import SinoCrewMemory
 
-crew = Crew(agents=[...], tasks=[...], memory=AMLCrewMemory())
+crew = Crew(agents=[...], tasks=[...], memory=SinoCrewMemory())
 ```
 
 ### AutoGen (one-line import)
 
 ```python
-from sinomem.plugins.autogen import AMLAutoGenMemory
+from sinomem.plugins.autogen import SinoAutoGenMemory
 
-assistant = AssistantAgent(name="agent", memory_provider=AMLAutoGenMemory())
+assistant = AssistantAgent(name="agent", memory_provider=SinoAutoGenMemory())
 ```
 
 ### Generic Python API

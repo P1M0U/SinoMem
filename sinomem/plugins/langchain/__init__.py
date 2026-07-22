@@ -4,9 +4,9 @@ LangChain 的 BaseMemory 接口定义了 load_memory_variables() 和 save_contex
 Agent 在每轮对话前后自动调用，实现完全无感的记忆管理。
 
 使用方式：
-    from sinomem.plugins.langchain import AMLMemory
+    from sinomem.plugins.langchain import SinoMemory
 
-    memory = AMLMemory()
+    memory = SinoMemory()
     agent = create_react_agent(llm, tools, memory=memory)
     # 每次对话前后自动检索/存储记忆，Agent 完全无感
 """
@@ -17,7 +17,7 @@ from typing import Any
 from ..base import BasePlugin
 
 
-class AMLMemory(BasePlugin):
+class SinoMemory(BasePlugin):
     """LangChain 兼容的自动记忆组件
 
     实现 LangChain 的 BaseMemory 接口，对接 LangChain Agent 的生命周期：
@@ -102,10 +102,10 @@ class AMLMemory(BasePlugin):
         engine.delete_all()
 
 
-class AMLLangChainChatMemory(AMLMemory):
+class SinoLangChainChatMemory(SinoMemory):
     """LangChain 对话场景专用 — 按会话粒度管理记忆
 
-    与 AMLMemory 的区别：
+    与 SinoMemory 的区别：
     - 自动标记 session_id，方便按会话清理
     - save_context 同时存储用户输入和 Agent 输出
     """
@@ -142,3 +142,8 @@ class AMLLangChainChatMemory(AMLMemory):
                     tags=["langchain-chat", f"session-{self.session_id}"],
                     importance=0.5,
                 )
+
+
+# 向后兼容别名（v0.7.x 旧名，后续版本将移除）
+AMLMemory = SinoMemory
+AMLLangChainChatMemory = SinoLangChainChatMemory
