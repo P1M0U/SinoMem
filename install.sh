@@ -31,6 +31,12 @@ GITEE_URL="https://gitee.com/P1M0U/SinoMem.git"
 GITHUB_URL="https://github.com/P1M0U/SinoMem.git"
 REPO_URL="$GITEE_URL"  # 默认 Gitee（国内快）
 
+# 国内镜像源（稳定可靠）
+PIP_MIRROR="https://pypi.tuna.tsinghua.edu.cn/simple"     # 清华大学 pypi 镜像
+HF_MIRROR="https://hf-mirror.com"                          # HuggingFace 镜像
+# 备用 pip 镜像: https://mirrors.aliyun.com/pypi/simple/ (阿里云)
+# 备用 HF 镜像: https://hf.xeduapi.com (苏州大学)
+
 # ── 参数解析 ──
 WITH_EMBEDDING="ask"  # ask | yes | no
 MIRROR="gitee"
@@ -64,6 +70,14 @@ done
 
 if [ "$MIRROR" = "github" ]; then
     REPO_URL="$GITHUB_URL"
+    PIP_MIRROR=""   # GitHub 用户使用 PyPI 官方源
+    HF_MIRROR=""    # GitHub 用户使用 HuggingFace 官方源
+fi
+
+# pip 镜像参数（为空时不附加 -i）
+PIP_MIRROR_ARG=""
+if [ -n "$PIP_MIRROR" ]; then
+    PIP_MIRROR_ARG="-i $PIP_MIRROR"
 fi
 
 # ── Banner ──
@@ -132,7 +146,7 @@ echo -e "  ${GREEN}✓${NC} pip 可用"
 
 # 升级 pip，避免旧版与 setuptools-scm 不兼容导致 PEP 660 editable install 失败
 echo -e "  正在升级 pip..."
-"$PYTHON" -m pip install --quiet --upgrade pip 2>&1 | tail -1
+"$PYTHON" -m pip install --quiet --upgrade pip $PIP_MIRROR_ARG 2>&1 | tail -1
 echo -e "  ${GREEN}✓${NC} pip 已升级到最新版"
 
 # git
@@ -177,7 +191,13 @@ VENV_PYTHON="$INSTALL_DIR/.venv/bin/python"
 VENV_PIP="$INSTALL_DIR/.venv/bin/pip"
 
 # 升级 venv 中的 pip
-"$VENV_PIP" install --quiet --upgrade pip 2>&1 | tail -1
+"$VENV_PIP" install --quiet --upgrade pip $PIP_MIRROR_ARG 2>&1 | tail -1
+
+# 配置 pip 国内镜像源（写入 venv 级 pip.conf，后续安装自动使用）
+if [ -n "$PIP_MIRROR" ]; then
+    "$VENV_PIP" config set global.index-url "$PIP_MIRROR" 2>/dev/null || true
+    echo -e "  ${GREEN}✓${NC} pip 镜像源: ${PIP_MIRROR}"
+fi
 
 # 构建安装参数
 INSTALL_ARGS=("-e" ".")
@@ -229,10 +249,17 @@ esac
 
 ENV_BLOCK_START="# >>> SinoMem >>>"
 ENV_BLOCK_END="# <<< SinoMem <<<"
+
+# 构建 HF_ENDPOINT 行（国内镜像优先，GitHub 用户不设）
+HF_ENDPOINT_LINE=""
+if [ -n "$HF_MIRROR" ]; then
+    HF_ENDPOINT_LINE="export HF_ENDPOINT=\"${HF_MIRROR}\""
+fi
+
 ENV_CONTENT="${ENV_BLOCK_START}
 export SINOMEM_HOME=\"${INSTALL_DIR}\"
 export PATH=\"\${SINOMEM_HOME}/.venv/bin:\${PATH}\"
-export HF_ENDPOINT=\"https://hf-mirror.com\"
+${HF_ENDPOINT_LINE}
 ${ENV_BLOCK_END}"
 
 if grep -q "$ENV_BLOCK_START" "$SHELL_RC" 2>/dev/null; then
@@ -287,6 +314,11 @@ if [ -d "$HOME/.hermes" ] || [ -n "${HERMES_HOME:-}" ]; then
     done
 
     if [ -n "$HERMES_VENV" ]; then
+
+	        # 配置 Hermes venv 的 pip 镜像源
+	        if [ -n "$PIP_MIRROR" ]; then
+	            "$HERMES_PYTHON" -m pip config set global.index-url "$PIP_MIRROR" 2>/dev/null || true
+	        fi
         HERMES_PYTHON="$HERMES_VENV/bin/python"
         echo ""
         echo -e "  ${BOLD}安装到 Hermes venv：${NC}"

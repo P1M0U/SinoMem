@@ -20,7 +20,10 @@ Lightweight, Chinese-friendly Agent memory system with local semantic search —
 ## Quick Start (30 seconds)
 
 ```bash
-# Install via one-liner (installs to ~/.local/share/sinomem/)
+# China / Asia users (Gitee, recommended)
+curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/install.sh | bash
+
+# International users (GitHub)
 curl -fsSL https://github.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --mirror github
 
 # Open a new terminal, then:
@@ -102,6 +105,10 @@ Copy the prompt below and send it to your AI Agent — it will handle the instal
 ```
 Please install SinoMem for me, run:
 
+# China / Asia users (Gitee + Tsinghua pip mirror):
+curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --with-embedding
+
+# International users (GitHub + PyPI):
 curl -fsSL https://github.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --mirror github --with-embedding
 
 After install, run source ~/.bashrc (or ~/.zshrc) to refresh PATH, then verify with sinomem --help.
@@ -117,32 +124,40 @@ Please install SinoMem for me. Steps:
    git clone --depth 1 https://github.com/P1M0U/SinoMem.git ~/.local/share/sinomem
    cd ~/.local/share/sinomem
    python3 -m venv .venv
+
+2. If in China, configure pip mirror first for faster downloads:
+   .venv/bin/pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
    .venv/bin/pip install -e .
 
-2. Verify the installation works
+3. Verify the installation works
    .venv/bin/python -c "from sinomem.core.engine import MemoryEngine; print('ok')"
 
-3. Add sinomem CLI to PATH, append to ~/.bashrc or ~/.zshrc:
+4. Add sinomem CLI to PATH, append to ~/.bashrc or ~/.zshrc:
    export SINOMEM_HOME="$HOME/.local/share/sinomem"
    export PATH="$SINOMEM_HOME/.venv/bin:$PATH"
+   # China users also add:
+   export HF_ENDPOINT="https://hf-mirror.com"
 
-4. Ask the user whether to install embedding dependencies (for semantic search):
+5. Ask the user whether to install embedding dependencies (for semantic search):
    — A. Skip (default) — semantic search degrades gracefully to keyword search
    — B. Install (onnxruntime + sqlite-vec, ~200MB)
 
-5. If user picked B, run .venv/bin/pip install -e ".[embedding]", then ask if they want to auto-download the ONNX model (~24MB):
+6. If user picked B, run .venv/bin/pip install -e ".[embedding]", then ask if they want to auto-download the ONNX model (~24MB):
+   # China users: set HF_ENDPOINT mirror first
+   export HF_ENDPOINT="https://hf-mirror.com"
+   .venv/bin/pip install huggingface-hub
    .venv/bin/python -c "from sinomem.core.embedder import ensure_model; print('ok' if ensure_model() else 'download failed')"
 
-6. Ask the user to choose an install method:
+7. Ask the user to choose an install method:
    — A. Hermes Memory Provider plugin (recommended) — Run `ln -s ~/.local/share/sinomem/hermes_plugin/ ~/.hermes/plugins/sinomem`
-   — B. MCP Server — Continue with step 7-8
+   — B. MCP Server — Continue with step 8-9
 
-7. (Only if user chose MCP Server) Add MCP Server config to ~/.hermes/config.yaml under mcp_servers:
+8. (Only if user chose MCP Server) Add MCP Server config to ~/.hermes/config.yaml under mcp_servers:
    sinomem:
      args: []
-     command: .venv/bin/python -m sinomem.entrypoints.mcp_server
+     command: ~/.local/share/sinomem/.venv/bin/python -m sinomem.entrypoints.mcp_server
 
-8. Run source ~/.bashrc (or ~/.zshrc) to refresh PATH, then verify with sinomem --help.
+9. Run source ~/.bashrc (or ~/.zshrc) to refresh PATH, then verify with sinomem --help.
 
 Tell me the result when done.
 ```
@@ -152,36 +167,42 @@ Tell me the result when done.
 ```
 Please install SinoMem for me. Steps:
 
-1. Clone and set up virtual environment
+1. Clone via Gitee and set up virtual environment (fast in China)
    git clone --depth 1 https://gitee.com/P1M0U/SinoMem.git ~/.local/share/sinomem
    cd ~/.local/share/sinomem
    python3 -m venv .venv
+
+2. Configure pip mirror and install
+   .venv/bin/pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
    .venv/bin/pip install -e .
 
-2. Verify the installation works
+3. Verify the installation works
    .venv/bin/python -c "from sinomem.core.engine import MemoryEngine; print('ok')"
 
-3. Add sinomem CLI to PATH, append to ~/.bashrc or ~/.zshrc:
+4. Add sinomem CLI to PATH, append to ~/.bashrc or ~/.zshrc:
    export SINOMEM_HOME="$HOME/.local/share/sinomem"
    export PATH="$SINOMEM_HOME/.venv/bin:$PATH"
+   export HF_ENDPOINT="https://hf-mirror.com"  # HuggingFace mirror for China
 
-4. Ask the user whether to install embedding dependencies (for semantic search):
+5. Ask the user whether to install embedding dependencies (for semantic search):
    — A. Skip (default) — semantic search degrades gracefully to keyword search
    — B. Install (onnxruntime + sqlite-vec, ~200MB)
 
-5. If user picked B, run .venv/bin/pip install -e ".[embedding]", then ask if they want to auto-download the ONNX model (~24MB):
+6. If user picked B, run .venv/bin/pip install -e ".[embedding]", then ask if they want to auto-download the ONNX model (~24MB):
+   export HF_ENDPOINT="https://hf-mirror.com"
+   .venv/bin/pip install huggingface-hub
    .venv/bin/python -c "from sinomem.core.embedder import ensure_model; print('ok' if ensure_model() else 'download failed')"
 
-6. Ask the user to choose an install method:
+7. Ask the user to choose an install method:
    — A. Hermes Memory Provider plugin (recommended) — Run `ln -s ~/.local/share/sinomem/hermes_plugin/ ~/.hermes/plugins/sinomem`
-   — B. MCP Server — Continue with step 7-8
+   — B. MCP Server — Continue with step 8-9
 
-7. (Only if user chose MCP Server) Add MCP Server config to ~/.hermes/config.yaml under mcp_servers:
+8. (Only if user chose MCP Server) Add MCP Server config to ~/.hermes/config.yaml under mcp_servers:
    sinomem:
      args: []
-     command: .venv/bin/python -m sinomem.entrypoints.mcp_server
+     command: ~/.local/share/sinomem/.venv/bin/python -m sinomem.entrypoints.mcp_server
 
-8. Run source ~/.bashrc (or ~/.zshrc) to refresh PATH, then verify with sinomem --help.
+9. Run source ~/.bashrc (or ~/.zshrc) to refresh PATH, then verify with sinomem --help.
 
 Tell me the result when done.
 ```
@@ -241,7 +262,10 @@ results = plugin.auto_search("deployment tools")
 ## Manual Install
 
 ```bash
-# One-liner (recommended)
+# China / Asia users — Gitee + Tsinghua mirror (recommended)
+curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/install.sh | bash
+
+# International users — GitHub + PyPI
 curl -fsSL https://github.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --mirror github
 
 # Or clone manually
@@ -251,7 +275,7 @@ python3 -m venv .venv
 .venv/bin/pip install -e .
 ```
 
-> The install script automatically adds `.venv/bin` to PATH. After refreshing your terminal, the `sinomem` command is available directly.
+> The install script automatically adds `.venv/bin` to PATH and configures pip/HuggingFace mirrors for China. After refreshing your terminal, the `sinomem` command is available directly.
 
 ## Uninstall
 
@@ -290,7 +314,7 @@ Add to `~/.hermes/config.yaml` under `mcp_servers:`:
 ```yaml
   sinomem:
     args: []
-    command: python -m sinomem.entrypoints.mcp_server
+    command: ~/.local/share/sinomem/.venv/bin/python -m sinomem.entrypoints.mcp_server
 ```
 
 Restart Hermes to activate.
@@ -308,8 +332,11 @@ Two embedding models are supported — choose one based on your use case (the sy
 # Create model directory
 mkdir -p models/embedding/onnx
 
-# Install download tool
-pip install huggingface-hub
+# China users: set HuggingFace mirror (hf-mirror.com is stable and reliable)
+export HF_ENDPOINT="https://hf-mirror.com"
+
+# Install download tool (China users: use Tsinghua pip mirror)
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple huggingface-hub
 
 # ─── Option A: paraphrase-multilingual-MiniLM-L12-v2 (multilingual, ~113MB) ───
 python -c "
@@ -326,9 +353,12 @@ hf_hub_download('Xenova/bge-small-zh-v1.5', 'tokenizer.json', local_dir='models/
 "
 ```
 
-> **💡 Users in China**: Set `HF_ENDPOINT=https://hf-mirror.com` before downloading for faster access.
-
-Without the model, semantic search degrades gracefully to keyword search.
+> **💡 Mirror tips**:
+> - `HF_ENDPOINT=https://hf-mirror.com` — HuggingFace mirror for China (stable and reliable)
+> - `pip install -i https://pypi.tuna.tsinghua.edu.cn/simple` — Tsinghua PyPI mirror
+> - Users outside China can omit these mirror settings and use the official sources directly.
+>
+> Without the model, semantic search degrades gracefully to keyword search.
 
 ---
 

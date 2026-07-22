@@ -118,37 +118,43 @@ curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --wi
 ```
 请帮我安装 SinoMem 记忆系统，步骤如下：
 
-1. 克隆仓库并创建虚拟环境
+1. 克隆仓库并创建虚拟环境（使用 Gitee 国内镜像）
    git clone --depth 1 https://gitee.com/P1M0U/SinoMem.git ~/.local/share/sinomem
    cd ~/.local/share/sinomem
    python3 -m venv .venv
+
+2. 配置 pip 清华镜像源并安装（国内下载更快）
+   .venv/bin/pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
    .venv/bin/pip install -e .
 
-2. 验证安装是否成功
+3. 验证安装是否成功
    .venv/bin/python -c "from sinomem.core.engine import MemoryEngine; print('ok')"
 
-3. 将 sinomem CLI 加入 PATH，追加到 ~/.bashrc 或 ~/.zshrc：
+4. 将 sinomem CLI 加入 PATH，追加到 ~/.bashrc 或 ~/.zshrc：
    export SINOMEM_HOME="$HOME/.local/share/sinomem"
    export PATH="$SINOMEM_HOME/.venv/bin:$PATH"
+   export HF_ENDPOINT="https://hf-mirror.com"   # HuggingFace 国内镜像（用于下载模型）
 
-4. 询问用户是否需要安装嵌入模型（用于语义搜索），给出以下选项让用户选择：
+5. 询问用户是否需要安装嵌入模型（用于语义搜索），给出以下选项让用户选择：
    — A. 不安装（默认）— 跳过此步，语义搜索自动降级为关键词搜索
    — B. 安装 embedding 依赖（onnxruntime + sqlite-vec，~200MB）
 
-5. 如果用户选择 B，执行 .venv/bin/pip install -e ".[embedding]" 安装依赖。
+6. 如果用户选择 B，执行 .venv/bin/pip install -e ".[embedding]" 安装依赖。
    然后询问是否需要自动下载 ONNX 模型（约 24MB），如果需要则运行：
+   export HF_ENDPOINT="https://hf-mirror.com"
+   .venv/bin/pip install huggingface-hub
    .venv/bin/python -c "from sinomem.core.embedder import ensure_model; print('ok' if ensure_model() else 'download failed')"
 
-6. 询问用户选择安装方式，给出以下选项：
+7. 询问用户选择安装方式，给出以下选项：
    — A. Hermes Memory Provider 插件方式（推荐）— 执行 `ln -s ~/.local/share/sinomem/hermes_plugin/ ~/.hermes/plugins/sinomem`
-   — B. MCP Server 方式 — 继续执行以下步骤 7-8
+   — B. MCP Server 方式 — 继续执行以下步骤 8-9
 
-7. （仅当用户选择 MCP Server 方式时）把 MCP Server 配置写入 ~/.hermes/config.yaml 的 mcp_servers 段：
+8. （仅当用户选择 MCP Server 方式时）把 MCP Server 配置写入 ~/.hermes/config.yaml 的 mcp_servers 段：
    sinomem:
      args: []
-     command: .venv/bin/python -m sinomem.entrypoints.mcp_server
+     command: ~/.local/share/sinomem/.venv/bin/python -m sinomem.entrypoints.mcp_server
 
-8. 执行 source ~/.bashrc（或 ~/.zshrc）刷新环境变量，然后运行 sinomem --help 验证 CLI 命令可用。
+9. 执行 source ~/.bashrc（或 ~/.zshrc）刷新环境变量，然后运行 sinomem --help 验证 CLI 命令可用。
 
 完成后告诉我安装结果。
 ```
@@ -162,33 +168,43 @@ curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --wi
    git clone --depth 1 https://github.com/P1M0U/SinoMem.git ~/.local/share/sinomem
    cd ~/.local/share/sinomem
    python3 -m venv .venv
+
+2. 配置 pip 镜像源并安装（国内用户推荐清华镜像，国外用户可跳过此步）
+   # 国内用户执行:
+   .venv/bin/pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+   # 国外用户直接安装:
    .venv/bin/pip install -e .
 
-2. 验证安装是否成功
+3. 验证安装是否成功
    .venv/bin/python -c "from sinomem.core.engine import MemoryEngine; print('ok')"
 
-3. 将 sinomem CLI 加入 PATH，追加到 ~/.bashrc 或 ~/.zshrc：
+4. 将 sinomem CLI 加入 PATH，追加到 ~/.bashrc 或 ~/.zshrc：
    export SINOMEM_HOME="$HOME/.local/share/sinomem"
    export PATH="$SINOMEM_HOME/.venv/bin:$PATH"
+   # 国内用户还需设置 HuggingFace 镜像：
+   export HF_ENDPOINT="https://hf-mirror.com"
 
-4. 询问用户是否需要安装嵌入模型（用于语义搜索），给出以下选项让用户选择：
+5. 询问用户是否需要安装嵌入模型（用于语义搜索），给出以下选项让用户选择：
    — A. 不安装（默认）— 跳过此步，语义搜索自动降级为关键词搜索
    — B. 安装 embedding 依赖（onnxruntime + sqlite-vec，~200MB）
 
-5. 如果用户选择 B，执行 .venv/bin/pip install -e ".[embedding]" 安装依赖。
+6. 如果用户选择 B，执行 .venv/bin/pip install -e ".[embedding]" 安装依赖。
    然后询问是否需要自动下载 ONNX 模型（约 24MB），如果需要则运行：
+   # 国内用户先设置镜像：
+   export HF_ENDPOINT="https://hf-mirror.com"
+   .venv/bin/pip install huggingface-hub
    .venv/bin/python -c "from sinomem.core.embedder import ensure_model; print('ok' if ensure_model() else 'download failed')"
 
-6. 询问用户选择安装方式，给出以下选项：
+7. 询问用户选择安装方式，给出以下选项：
    — A. Hermes Memory Provider 插件方式（推荐）— 执行 `ln -s ~/.local/share/sinomem/hermes_plugin/ ~/.hermes/plugins/sinomem`
-   — B. MCP Server 方式 — 继续执行以下步骤 7-8
+   — B. MCP Server 方式 — 继续执行以下步骤 8-9
 
-7. （仅当用户选择 MCP Server 方式时）把 MCP Server 配置写入 ~/.hermes/config.yaml 的 mcp_servers 段：
+8. （仅当用户选择 MCP Server 方式时）把 MCP Server 配置写入 ~/.hermes/config.yaml 的 mcp_servers 段：
    sinomem:
      args: []
-     command: .venv/bin/python -m sinomem.entrypoints.mcp_server
+     command: ~/.local/share/sinomem/.venv/bin/python -m sinomem.entrypoints.mcp_server
 
-8. 执行 source ~/.bashrc（或 ~/.zshrc）刷新环境变量，然后运行 sinomem --help 验证 CLI 命令可用。
+9. 执行 source ~/.bashrc（或 ~/.zshrc）刷新环境变量，然后运行 sinomem --help 验证 CLI 命令可用。
 
 完成后告诉我安装结果。
 ```
@@ -301,8 +317,11 @@ bash uninstall.sh
 # 创建模型目录
 mkdir -p models/embedding/onnx
 
-# 安装下载工具
-pip install huggingface-hub
+# 国内用户：设置 HuggingFace 镜像加速（hf-mirror.com 稳定可靠）
+export HF_ENDPOINT="https://hf-mirror.com"
+
+# 安装下载工具（国内用户建议使用清华 pip 镜像）
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple huggingface-hub
 
 # ─── 模型 A：paraphrase-multilingual-MiniLM-L12-v2（多语言，~113MB）───
 python -c "
@@ -319,7 +338,10 @@ hf_hub_download('Xenova/bge-small-zh-v1.5', 'tokenizer.json', local_dir='models/
 "
 ```
 
-> **💡 国内用户**：下载前设置环境变量 `HF_ENDPOINT=https://hf-mirror.com` 使用镜像加速。
+> **💡 镜像说明**：
+> - `HF_ENDPOINT=https://hf-mirror.com` — HuggingFace 国内镜像（稳定可靠）
+> - pip `-i https://pypi.tuna.tsinghua.edu.cn/simple` — 清华大学 PyPI 镜像
+> - 国外用户可省略上述镜像设置，直接使用官方源
 
 不下载模型也能使用，语义搜索会自动降级为关键词搜索。
 
@@ -330,7 +352,7 @@ hf_hub_download('Xenova/bge-small-zh-v1.5', 'tokenizer.json', local_dir='models/
 ```yaml
   sinomem:
     args: []
-    command: python -m sinomem.entrypoints.mcp_server
+    command: ~/.local/share/sinomem/.venv/bin/python -m sinomem.entrypoints.mcp_server
 ```
 
 重启 Hermes 后生效。
