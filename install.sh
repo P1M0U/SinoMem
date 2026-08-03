@@ -68,6 +68,12 @@ for arg in "${@}"; do
     esac
 done
 
+# 校验镜像源取值，非法值直接报错退出
+if [ "$MIRROR" != "gitee" ] && [ "$MIRROR" != "github" ]; then
+    echo -e "${RED}错误: 无效镜像源 '$MIRROR'，可选 gitee 或 github${NC}"
+    exit 1
+fi
+
 if [ "$MIRROR" = "github" ]; then
     REPO_URL="$GITHUB_URL"
     PIP_MIRROR=""   # GitHub 用户使用 PyPI 官方源
@@ -165,6 +171,13 @@ if [ -d "$INSTALL_DIR/.git" ]; then
     echo -e "  ${YELLOW}!${NC} 已有安装，执行 git pull 更新..."
     git -C "$INSTALL_DIR" pull --ff-only 2>/dev/null || {
         echo -e "  ${YELLOW}!${NC} git pull 失败，重新 clone..."
+        # 危险路径保护：防止误删根目录/家目录
+        case "$INSTALL_DIR" in
+            "/" | "$HOME" | "$HOME/.local" | "$HOME/.local/share")
+                echo -e "${RED}✗ 拒绝删除危险路径: $INSTALL_DIR${NC}"
+                exit 1
+                ;;
+        esac
         rm -rf "$INSTALL_DIR"
         git clone --depth 1 "$REPO_URL" "$INSTALL_DIR"
     }
@@ -263,14 +276,29 @@ ${HF_ENDPOINT_LINE}
 ${ENV_BLOCK_END}"
 
 if grep -q "$ENV_BLOCK_START" "$SHELL_RC" 2>/dev/null; then
-    # 更新已有 block
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        sed -i '' "/$ENV_BLOCK_START/,/$ENV_BLOCK_END/c\\
-$ENV_CONTENT" "$SHELL_RC"
-    else
-        sed -i "/$ENV_BLOCK_START/,/$ENV_BLOCK_END/c\\
-$ENV_CONTENT" "$SHELL_RC"
-    fi
+    # 更新已有 block（用 Python 整块替换，避免 sed 多行转义损坏 rc）
+    export SINOMEM_ENV_CONTENT="$ENV_CONTENT"
+    "$VENV_PYTHON" - "$SHELL_RC" <<'PYEOF'
+import os
+import re
+import sys
+from pathlib import Path
+
+rc_path = Path(sys.argv[1])
+start = "# >>> SinoMem >>>"
+end = "# <<< SinoMem <<<"
+content = os.environ.get("SINOMEM_ENV_CONTENT", "").rstrip("\n")
+
+text = rc_path.read_text(encoding="utf-8")
+pattern = re.compile(re.escape(start) + r".*?" + re.escape(end), re.DOTALL)
+if pattern.search(text):
+    text = pattern.sub(content, text)
+    rc_path.write_text(text, encoding="utf-8")
+else:
+    with rc_path.open("a", encoding="utf-8") as f:
+        f.write("\n" + content)
+PYEOF
+    unset SINOMEM_ENV_CONTENT
     echo -e "  ${YELLOW}!${NC} 已更新 $SHELL_RC 中的 SINOMEM_HOME"
 else
     echo "" >> "$SHELL_RC"
@@ -314,20 +342,20 @@ if [ -d "$HOME/.hermes" ] || [ -n "${HERMES_HOME:-}" ]; then
     done
 
     if [ -n "$HERMES_VENV" ]; then
-
-	        # 配置 Hermes venv 的 pip 镜像源
-	        if [ -n "$PIP_MIRROR" ]; then
-	            "$HERMES_PYTHON" -m pip config set global.index-url "$PIP_MIRROR" 2>/dev/null || true
-	        fi
         HERMES_PYTHON="$HERMES_VENV/bin/python"
+
+        # 配置 Hermes venv 的 pip 镜像源
+        if [ -n "$PIP_MIRROR" ]; then
+            "$HERMES_PYTHON" -m pip config set global.index-url "$PIP_MIRROR" 2>/dev/null || true
+        fi
         echo ""
         echo -e "  ${BOLD}安装到 Hermes venv：${NC}"
         echo "  ────────────────────────────────────────────"
 
-        # 先安装轻量依赖（jieba + tokenizers）
+        # 先安装轻量依赖（jieba + tokenizers，使用镜像源）
         echo "  安装基础依赖..."
-        "$HERMES_PYTHON" -m pip install --quiet --upgrade pip 2>&1 | tail -1
-        "$HERMES_PYTHON" -m pip install --quiet jieba tokenizers 2>&1 | tail -3
+        "$HERMES_PYTHON" -m pip install --quiet --upgrade pip $PIP_MIRROR_ARG 2>&1 | tail -1
+        "$HERMES_PYTHON" -m pip install --quiet jieba tokenizers $PIP_MIRROR_ARG 2>&1 | tail -3
 
         # 安装 sinomem 包本身到 Hermes venv
         echo "  安装 sinomem（可编辑模式）..."

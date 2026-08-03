@@ -51,7 +51,16 @@ if [[ -f "$SETTINGS_FILE" ]]; then
 fi
 
 # ── 生成/更新 settings.local.json ──
-PYTHON_BIN="${SINOMEM_PYTHON:-python3}"
+# 默认使用 install.sh 创建的 venv Python（能 import sinomem 及其运行时依赖），
+# 未安装则回退系统 python3；用户可用 SINOMEM_PYTHON 显式指定。
+DEFAULT_VENV_PYTHON="${SINOMEM_HOME:-$HOME/.local/share/sinomem}/.venv/bin/python"
+if [[ -n "${SINOMEM_PYTHON:-}" ]]; then
+    PYTHON_BIN="$SINOMEM_PYTHON"
+elif [[ -x "$DEFAULT_VENV_PYTHON" ]]; then
+    PYTHON_BIN="$DEFAULT_VENV_PYTHON"
+else
+    PYTHON_BIN="python3"
+fi
 
 # Claude Code hooks 配置
 HOOKS_CONFIG=$(cat <<EOF
@@ -80,12 +89,31 @@ EOF
 
 # 读取现有配置或新建
 if [[ -f "$SETTINGS_FILE" ]]; then
-    echo -e "${YELLOW}!${NC} 检测到已有 settings.local.json，手动合并..."
-    echo ""
-    echo "请手动将以下 hooks 配置合并到 $SETTINGS_FILE："
-    echo "────────────────────────────────────────────"
-    echo "$HOOKS_CONFIG"
-    echo "────────────────────────────────────────────"
+    echo -e "${YELLOW}!${NC} 检测到已有 settings.local.json，合并 hooks 配置（保留其他键）..."
+    export SINOMEM_HOOKS_JSON="$HOOKS_CONFIG"
+    "$PYTHON_BIN" - "$SETTINGS_FILE" <<'PYEOF'
+import json
+import os
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+try:
+    existing = json.loads(path.read_text(encoding="utf-8"))
+except (json.JSONDecodeError, OSError):
+    print(f"错误: {path} 不是合法 JSON，请手动合并 hooks 配置")
+    sys.exit(1)
+
+hooks = json.loads(os.environ.get("SINOMEM_HOOKS_JSON", "{}"))
+existing.setdefault("hooks", {}).update(hooks.get("hooks", {}))
+path.write_text(
+    json.dumps(existing, ensure_ascii=False, indent=2) + "\n",
+    encoding="utf-8",
+)
+print(f"merged hooks into {path}")
+PYEOF
+    unset SINOMEM_HOOKS_JSON
+    echo -e "  ${GREEN}✓${NC} hooks 已合并到 $SETTINGS_FILE"
 else
     echo "$HOOKS_CONFIG" > "$SETTINGS_FILE"
     echo -e "${GREEN}✓${NC} 已创建 $SETTINGS_FILE"

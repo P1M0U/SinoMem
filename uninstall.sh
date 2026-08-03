@@ -93,6 +93,13 @@ echo ""
 echo -e "${BOLD}[2/7]${NC} 删除安装目录..."
 
 if [ -d "$INSTALL_DIR" ]; then
+    # 危险路径保护：防止误删根目录/家目录
+    case "$INSTALL_DIR" in
+        "/" | "$HOME" | "$HOME/.local" | "$HOME/.local/share")
+            echo -e "${RED}✗ 拒绝删除危险路径: $INSTALL_DIR${NC}"
+            exit 1
+            ;;
+    esac
     echo -e "  目录: ${INSTALL_DIR}"
     rm -rf "$INSTALL_DIR"
     echo -e "  ${GREEN}✓${NC} 安装目录已删除"
@@ -230,8 +237,17 @@ if [ -n "$HERMES_VENV" ]; then
     HERMES_PIP="$HERMES_VENV/bin/pip"
     for pkg in jieba tokenizers; do
         if "$HERMES_PIP" show "$pkg" &>/dev/null 2>&1; then
-            echo -e "  卸载 Hermes venv 中的 ${pkg}..."
-            "$HERMES_PIP" uninstall -y "$pkg" 2>/dev/null && HERMES_DEPS_CLEANED=1 || true
+            # 仅当无其他包依赖它时才卸载，避免破坏 Hermes 自身
+            REQUIRED_BY=$(
+                "$HERMES_PIP" show "$pkg" 2>/dev/null |
+                    awk -F': ' '/^Required-by:/{print $2}'
+            )
+            if [ -n "$REQUIRED_BY" ]; then
+                echo -e "  ${YELLOW}!${NC} ${pkg} 被 ${REQUIRED_BY} 依赖，跳过卸载"
+            else
+                echo -e "  卸载 Hermes venv 中的 ${pkg}..."
+                "$HERMES_PIP" uninstall -y "$pkg" 2>/dev/null && HERMES_DEPS_CLEANED=1 || true
+            fi
         fi
     done
 fi
@@ -269,10 +285,53 @@ for cc_dir in "$HOME/.claude" "$(pwd)/.claude"; do
         if [ "$cc_answer" = "n" ] || [ "$cc_answer" = "N" ]; then
             echo -e "  ${YELLOW}!${NC} 已跳过，请手动清理: ${CC_SETTINGS}"
         else
-            # 备份后删除
+            # 备份后精确移除 sinomem 相关 hooks，保留用户其他配置
             cp "$CC_SETTINGS" "${CC_SETTINGS}.bak.$(date +%Y%m%d_%H%M%S)"
-            rm "$CC_SETTINGS"
-            echo -e "  ${GREEN}✓${NC} Claude Code hooks 已清理（原文件已备份）"
+            if command -v python3 &>/dev/null; then
+                python3 - "$CC_SETTINGS" <<'PYEOF' || true
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+try:
+    data = json.loads(path.read_text(encoding="utf-8"))
+except (json.JSONDecodeError, OSError):
+    sys.exit(0)
+
+hooks = data.get("hooks", {})
+changed = False
+for event in list(hooks.keys()):
+    groups = hooks[event]
+    kept = []
+    for group in groups:
+        keep_hooks = [
+            h
+            for h in group.get("hooks", [])
+            if "sinomem" not in json.dumps(h, ensure_ascii=False)
+        ]
+        if keep_hooks:
+            kept.append({**group, "hooks": keep_hooks})
+    if len(kept) != len(groups):
+        changed = True
+    if kept:
+        hooks[event] = kept
+    else:
+        del hooks[event]
+
+if changed:
+    if not hooks:
+        data.pop("hooks", None)
+    path.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+PYEOF
+                echo -e "  ${GREEN}✓${NC} Claude Code hooks 已清理（保留其他配置，原文件已备份）"
+            else
+                rm "$CC_SETTINGS"
+                echo -e "  ${GREEN}✓${NC} Claude Code hooks 文件已删除（原文件已备份）"
+            fi
             CC_CLEANED=1
         fi
     fi
