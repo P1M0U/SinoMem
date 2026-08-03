@@ -1,5 +1,5 @@
 name: sinomem
-version: 0.7.0
+version: 0.7.1
 description: "SinoMem: jieba Chinese FTS5 + ONNX semantic search memory provider"
 hooks:
   - on_memory_write
