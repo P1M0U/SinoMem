@@ -18,6 +18,8 @@ def get_logger(name: str = "sinomem") -> logging.Logger:
         )
         logger.addHandler(handler)
         logger.setLevel(logging.INFO)
+    # 禁止冒泡到 root，避免宿主应用已配置 root handler 时重复打印
+    logger.propagate = False
     return logger
 
 

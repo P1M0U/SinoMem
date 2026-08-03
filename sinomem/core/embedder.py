@@ -27,6 +27,12 @@ _MIRROR_HF = "https://hf-mirror.com"
 # 快速探测超时（秒），避免在不可达端点上等待过久
 _PROBE_TIMEOUT = 3
 
+# 嵌入模型最大输入序列长度（bge-small-zh 与 MiniLM-L12 均为 512 token）
+MAX_SEQ_LEN = 512
+
+# 批量推理分块大小，避免超大 batch 推理内存溢出
+_EMBED_BATCH_CHUNK = 64
+
 
 def _probe_endpoint(
     endpoint: str | None, timeout: int = _PROBE_TIMEOUT
@@ -426,19 +432,22 @@ class Embedder:
         return pooled / np.clip(norm, a_min=1e-9, a_max=None)
 
     def embed(self, text: str) -> list[float]:
-        """单条文本嵌入"""
+        """单条文本嵌入（超长内容截断到模型最大序列长度）"""
         if self._session is None:
             self._load()
 
         encoded = self._tokenizer.encode(text)
-        inputs = self._build_inputs(encoded.ids, encoded.attention_mask)
+        # 手动截断到模型最大序列长度（兼容不同 tokenizers 版本 API）
+        inputs = self._build_inputs(
+            encoded.ids[:MAX_SEQ_LEN], encoded.attention_mask[:MAX_SEQ_LEN]
+        )
         outputs = self._session.run(None, inputs)
 
         normalized = self._pool(outputs[0], inputs["attention_mask"])
         return normalized[0].tolist()
 
     def embed_batch(self, texts: list[str]) -> list[list[float]]:
-        """批量文本嵌入 — 利用 ONNX Runtime batch 推理"""
+        """批量文本嵌入 — 利用 ONNX Runtime batch 推理（分块防止 OOM）"""
         if not texts:
             return []
         if len(texts) == 1:
@@ -447,20 +456,32 @@ class Embedder:
         if self._session is None:
             self._load()
 
-        # 批量分词
-        encodings = [self._tokenizer.encode(text) for text in texts]
-        max_len = max(len(e.ids) for e in encodings)
+        results: list[list[float]] = []
+        for start in range(0, len(texts), _EMBED_BATCH_CHUNK):
+            chunk = texts[start : start + _EMBED_BATCH_CHUNK]
+            results.extend(self._embed_chunk(chunk))
+        return results
+
+    def _embed_chunk(self, texts: list[str]) -> list[list[float]]:
+        """对一批文本编码 + 推理（截断到 MAX_SEQ_LEN，按最长样本填充）"""
+        # 批量分词（手动截断到模型最大序列长度，防止超长输入推理失败）
+        truncated = [
+            (
+                e.ids[:MAX_SEQ_LEN],
+                e.attention_mask[:MAX_SEQ_LEN],
+            )
+            for e in (self._tokenizer.encode(text) for text in texts)
+        ]
+        max_len = max(len(ids) for ids, _ in truncated)
 
         # 填充到相同长度，构造 batch 输入
         batch_ids = []
         batch_mask = []
 
-        for encoded in encodings:
-            pad_len = max_len - len(encoded.ids)
-            ids = encoded.ids + [0] * pad_len
-            mask = encoded.attention_mask + [0] * pad_len
-            batch_ids.append(ids)
-            batch_mask.append(mask)
+        for ids, mask in truncated:
+            pad_len = max_len - len(ids)
+            batch_ids.append(ids + [0] * pad_len)
+            batch_mask.append(mask + [0] * pad_len)
 
         inputs = self._build_batch_inputs(batch_ids, batch_mask)
         outputs = self._session.run(None, inputs)
@@ -469,5 +490,4 @@ class Embedder:
         token_embeddings = outputs[0]  # (batch_size, max_len, dim)
         attention_mask = np.array(batch_mask, dtype=np.int64)
         normalized = self._pool(token_embeddings, attention_mask)
-
         return normalized.tolist()
