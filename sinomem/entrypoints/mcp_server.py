@@ -1,11 +1,29 @@
 """MCP Server 入口 — Agent 通过 stdin/stdout 调用"""
 
+import functools
+import threading
+
 from fastmcp import FastMCP
 from fastmcp.server.lifespan import lifespan
 
 from ..core.engine import MemoryEngine, create_engine
 
 _engine: MemoryEngine | None = None
+
+# fastmcp 对同步工具默认在线程池执行，全部工具共享同一 SQLite 连接，
+# 用 RLock 串行化访问，避免并发读写竞态
+_ENGINE_LOCK = threading.RLock()
+
+
+def engine_safe(func):
+    """装饰器：串行化 MCP 工具对共享引擎/连接的访问"""
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        with _ENGINE_LOCK:
+            return func(*args, **kwargs)
+
+    return wrapper
 
 
 @lifespan
@@ -33,6 +51,7 @@ def _get_engine() -> MemoryEngine:
 
 
 @mcp.tool()
+@engine_safe
 def store_memory(
     content: str,
     category: str = "general",
@@ -66,6 +85,7 @@ def store_memory(
 
 
 @mcp.tool()
+@engine_safe
 def search_memory(
     query: str, mode: str = "keyword", limit: int = 5
 ) -> list[dict]:
@@ -80,11 +100,18 @@ def search_memory(
         mode: keyword（关键词BM25）| semantic（语义）| hybrid（RRF融合）
         limit: 返回条数
     """
+    if mode not in ("keyword", "semantic", "hybrid"):
+        raise ValueError(
+            f"无效搜索模式: {mode}（可选 keyword/semantic/hybrid）"
+        )
+    # 钳制返回条数，负值/超大值会导致意外行为
+    limit = max(1, min(limit, 100))
     engine = _get_engine()
     return engine.search(query, mode=mode, limit=limit)
 
 
 @mcp.tool()
+@engine_safe
 def get_memory(memory_id: int) -> dict | None:
     """获取指定 id 的记忆
 
@@ -96,6 +123,7 @@ def get_memory(memory_id: int) -> dict | None:
 
 
 @mcp.tool()
+@engine_safe
 def update_memory(
     memory_id: int,
     content: str | None = None,
@@ -127,6 +155,7 @@ def update_memory(
 
 
 @mcp.tool()
+@engine_safe
 def delete_memory(memory_id: int) -> dict:
     """删除指定 id 的记忆
 
@@ -139,6 +168,7 @@ def delete_memory(memory_id: int) -> dict:
 
 
 @mcp.tool()
+@engine_safe
 def delete_memories_by_category(category: str) -> dict:
     """按分类批量删除记忆
 
@@ -151,6 +181,7 @@ def delete_memories_by_category(category: str) -> dict:
 
 
 @mcp.tool()
+@engine_safe
 def reindex_memories() -> dict:
     """重新分词并重建 FTS5 索引（词典更新后使用）"""
     engine = _get_engine()
@@ -159,6 +190,7 @@ def reindex_memories() -> dict:
 
 
 @mcp.tool()
+@engine_safe
 def cleanup_memories() -> dict:
     """清理所有已过期的记忆"""
     engine = _get_engine()
@@ -167,6 +199,7 @@ def cleanup_memories() -> dict:
 
 
 @mcp.tool()
+@engine_safe
 def store_memories_batch(
     items: list[dict],
     skip_duplicate: bool = True,
@@ -184,6 +217,7 @@ def store_memories_batch(
 
 
 @mcp.tool()
+@engine_safe
 def search_memories_batch(
     queries: list[dict],
 ) -> list[list[dict]]:
@@ -197,6 +231,7 @@ def search_memories_batch(
 
 
 @mcp.tool()
+@engine_safe
 def list_memories(category: str | None = None, limit: int = 20) -> list[dict]:
     """列出记忆（按重要性排序，排除过期）
 
@@ -209,6 +244,7 @@ def list_memories(category: str | None = None, limit: int = 20) -> list[dict]:
 
 
 @mcp.tool()
+@engine_safe
 def memory_stats() -> dict:
     """查看记忆统计信息（含过期记忆数）"""
     engine = _get_engine()
@@ -216,6 +252,7 @@ def memory_stats() -> dict:
 
 
 @mcp.tool()
+@engine_safe
 def vacuum_memory() -> dict:
     """回收已删除记忆占用的磁盘空间（VACUUM）"""
     engine = _get_engine()
@@ -223,6 +260,7 @@ def vacuum_memory() -> dict:
 
 
 @mcp.tool()
+@engine_safe
 def delete_all_memories() -> dict:
     """清空所有记忆（⚠️ 不可逆操作）"""
     engine = _get_engine()
