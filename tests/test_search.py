@@ -15,6 +15,15 @@ class TestKeywordSearch:
         results = engine.search("测试", limit=3)
         assert len(results) <= 3
 
+    def test_keyword_score_larger_is_more_relevant(self, engine):
+        """keyword 模式 score 越大越相关（与 semantic 语义一致）"""
+        engine.store("Python 是编程语言，Python 非常流行")
+        engine.store("Python 偶尔被提到一次")
+        results = engine.search("Python", mode="keyword")
+        assert len(results) >= 2
+        scores = [r["score"] for r in results]
+        assert scores == sorted(scores, reverse=True)
+
 
 class TestSemanticSearch:
     def test_semantic_degrades_without_model(self, engine):

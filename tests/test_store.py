@@ -144,6 +144,21 @@ class TestBatchOperations:
         """空列表返回空结果"""
         assert engine.store_batch([]) == []
 
+    def test_store_batch_over_variable_limit(self, engine):
+        """批量存储超过 SQLite 单条变量上限仍成功（分块写入）"""
+        # 200 条 × 5 变量/条 > 老版本 SQLite 999 变量上限
+        items = [
+            {"content": f"分块批量条目 {i} 唯一内容", "category": "tool"}
+            for i in range(200)
+        ]
+        ids = engine.store_batch(items, skip_duplicate=False)
+        assert len(ids) == 200
+        assert len(set(ids)) == 200  # 全部成功且无重复 id
+
+        # 搜索验证 FTS 索引正确写入
+        results = engine.search("分块批量条目", mode="keyword", limit=200)
+        assert len(results) >= 199
+
     def test_search_batch(self, engine):
         """批量搜索多个关键词"""
         engine.store("飞书发送文件")

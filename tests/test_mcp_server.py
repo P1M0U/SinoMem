@@ -4,15 +4,20 @@ import pytest
 
 from sinomem.core.engine import MemoryEngine
 from sinomem.entrypoints.mcp_server import (
+    cleanup_memories,
+    delete_all_memories,
+    delete_memories_by_category,
     delete_memory,
     get_memory,
     list_memories,
     memory_stats,
+    reindex_memories,
     search_memories_batch,
     search_memory,
     store_memories_batch,
     store_memory,
     update_memory,
+    vacuum_memory,
 )
 
 
@@ -98,3 +103,43 @@ class TestMCPTools:
         assert len(results) == 2
         assert len(results[0]) >= 1
         assert results[1] == []
+
+    def test_delete_memories_by_category_tool(self, setup_engine):
+        """按分类批量删除"""
+        store_memory("分类删除测试", category="tool")
+        store_memory("保留测试", category="general")
+        res = delete_memories_by_category("tool")
+        assert res["deleted"] == 1
+        assert memory_stats()["total"] == 1
+
+    def test_reindex_memories_tool(self, setup_engine):
+        """重新分词并重建 FTS5 索引"""
+        store_memory("重建索引测试")
+        res = reindex_memories()
+        assert res["reindexed"] >= 1
+
+    def test_cleanup_memories_tool(self, setup_engine):
+        """清理过期记忆"""
+        engine = setup_engine
+        mid = store_memory("过期清理测试")["id"]
+        engine._conn.execute(
+            "UPDATE memories SET expires_at = datetime('now','-1 day') "
+            "WHERE id = ?",
+            (mid,),
+        )
+        engine._conn.commit()
+        res = cleanup_memories()
+        assert res["cleaned"] >= 1
+
+    def test_vacuum_memory_tool(self, setup_engine):
+        """回收已删除磁盘空间"""
+        store_memory("真空测试")
+        res = vacuum_memory()
+        assert "freed" in res
+
+    def test_delete_all_memories_tool(self, setup_engine):
+        """清空所有记忆"""
+        store_memory("清空测试")
+        res = delete_all_memories()
+        assert res["deleted"] == 1
+        assert memory_stats()["total"] == 0
