@@ -126,12 +126,22 @@ class TestTTL:
     """TTL 过期测试"""
 
     def test_parse_ttl_valid(self):
-        """有效的 TTL 字符串解析"""
+        """有效的 TTL 字符串解析为未来时间（SQLite 兼容格式）"""
+        from datetime import UTC, datetime, timedelta
+
         from sinomem.core.store import _parse_ttl
 
         result_30d = _parse_ttl("30d")
         assert result_30d is not None
-        assert "T" in result_30d
+        # 格式为 SQLite datetime('now') 同格式：空格分隔、无 T/Z 后缀
+        assert "T" not in result_30d
+        assert "Z" not in result_30d
+        # 时长被正确叠加到当前时间（30 天后）
+        expected = datetime.now(UTC) + timedelta(days=30)
+        parsed = datetime.strptime(result_30d, "%Y-%m-%d %H:%M:%S").replace(
+            tzinfo=UTC
+        )
+        assert abs((parsed - expected).total_seconds()) < 5
 
         result_24h = _parse_ttl("24h")
         assert result_24h is not None

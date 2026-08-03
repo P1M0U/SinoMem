@@ -4,7 +4,7 @@ import functools
 import json
 import sqlite3
 import time
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from .logger import get_logger
 from .shared import _row_to_dict
@@ -17,10 +17,13 @@ MAX_CONTENT_LENGTH = 8000
 
 
 def _parse_ttl(ttl: str | None) -> str | None:
-    """将人类可读的 TTL 字符串转换为 ISO 时间戳
+    """将人类可读的 TTL 字符串转换为 SQLite 兼容时间戳
 
     支持格式: "30d"（天）, "24h"（小时）, "60m"（分钟）, "7d12h"
     返回 None 如果 ttl 为空或无效
+
+    输出统一为 SQLite ``datetime('now')`` 同格式（空格分隔、无时区
+    后缀），确保 ``expires_at`` 与其字符串比较结果正确。
     """
     if not ttl or not isinstance(ttl, str):
         return None
@@ -39,11 +42,11 @@ def _parse_ttl(ttl: str | None) -> str | None:
     if total_seconds <= 0:
         return None
 
+    # TTL 时长叠加到当前时间，且格式与 SQLite 时间字符串对齐
     return (
-        datetime.now(UTC)
+        (datetime.now(UTC) + timedelta(seconds=total_seconds))
         .replace(microsecond=0)
-        .isoformat()
-        .replace("+00:00", "Z")
+        .strftime("%Y-%m-%d %H:%M:%S")
     )
 
 
@@ -62,9 +65,15 @@ def _retry_on_lock(max_retries: int = 3, base_delay: float = 0.05):
                 try:
                     return func(self, *args, **kwargs)
                 except sqlite3.OperationalError as e:
+                    # 清理未提交事务，避免重试非幂等事务产生重复/幽灵数据
+                    self.conn.rollback()
                     if "locked" not in str(e) or attempt == max_retries - 1:
                         raise
                     time.sleep(base_delay * (2**attempt))
+                except Exception:
+                    # 非锁冲突异常：回滚半提交事务后原样抛出
+                    self.conn.rollback()
+                    raise
             return None  # unreachable
 
         return wrapper
@@ -445,9 +454,15 @@ class MemoryStore:
 
     @_retry_on_lock()
     def add_vector(self, memory_id: int, embedding_bytes: bytes) -> None:
-        """为已有记忆添加向量"""
+        """为已有记忆添加向量（已存在则覆盖，避免主键冲突）
+
+        vec0 虚拟表不支持 UPSERT，先删后插实现幂等。
+        """
         if not self._has_vec():
             return
+        self.conn.execute(
+            "DELETE FROM memories_vec WHERE id = ?", (memory_id,)
+        )
         self.conn.execute(
             "INSERT INTO memories_vec (id, embedding) VALUES (?, ?)",
             (memory_id, embedding_bytes),
@@ -601,81 +616,94 @@ class MemoryStore:
                 ids.append(-1)  # 占位，后续用真实 id 回填
                 new_items.append((i, p))
 
-        # ── 4. 批量写入新条目（单事务，RETURNING id）──
+        # ── 4. 批量写入新条目（分批处理，避免 SQL 变量数超限）──
         if new_items:
-            main_rows = [
-                (
-                    p["content"],
-                    p["category"],
-                    p["tags_json"],
-                    p["importance"],
-                    p["expires_at"],
-                )
-                for _, p in new_items
-            ]
-
-            # 单条多行 INSERT + RETURNING id（消除 last_insert_rowid 竞态）
-            # executemany 不支持 RETURNING，改用多 VALUES 子句
-            placeholders = ", ".join("(?, ?, ?, ?, ?)" for _ in new_items)
-            flat_values = []
-            for row in main_rows:
-                flat_values.extend(row)
-
-            cursor = self.conn.execute(
-                f"INSERT INTO memories (content, category, tags, "
-                f"importance, expires_at) VALUES {placeholders} "
-                f"RETURNING id",
-                flat_values,
-            )
-            new_ids = [row[0] for row in cursor.fetchall()]
-
-            # 回填占位
-            for j, (orig_idx, _) in enumerate(new_items):
-                ids[orig_idx] = new_ids[j]
-
-            # FTS5 批量写入
-            fts_rows = [
-                (
-                    new_ids[j],
-                    tokenize(p["content"]),
-                    p["tags_json"],
-                    p["category"],
-                )
-                for j, (_, p) in enumerate(new_items)
-            ]
-            self.conn.executemany(
-                "INSERT INTO memories_fts (rowid, content, tags, "
-                "category) VALUES (?, ?, ?, ?)",
-                fts_rows,
-            )
-
-            # 向量批量写入（关键：embed_batch 一次性推理，
-            # 避免逐条的 ONNX 调用开销）
-            if self._has_vec() and self._embedder:
-                import numpy as np
-
-                new_contents = [p["content"] for _, p in new_items]
-                embeddings = self._embedder.embed_batch(new_contents)
-                vec_rows = [
-                    (
-                        new_ids[j],
-                        np.array(emb, dtype=np.float32).tobytes(),
-                    )
-                    for j, emb in enumerate(embeddings)
-                ]
-                self.conn.executemany(
-                    "INSERT INTO memories_vec (id, embedding) VALUES (?, ?)",
-                    vec_rows,
-                )
+            # SQLite 单条 SQL 变量数上限（老版本 999 / 新版本 32766），
+            # 每行 5 个变量，取 150 条/批兼容所有版本。
+            _INSERT_BATCH = 150
+            new_ids_all: list[int] = []
+            for start in range(0, len(new_items), _INSERT_BATCH):
+                chunk = new_items[start : start + _INSERT_BATCH]
+                chunk_ids = self._insert_batch_chunk(chunk)
+                # 回填占位（保持 ids 顺序与输入一致）
+                for j, (orig_idx, _) in enumerate(chunk):
+                    ids[orig_idx] = chunk_ids[j]
+                new_ids_all.extend(chunk_ids)
 
             self.conn.commit()
             logger.info(
                 "批量存储完成: %d 条新增, %d 条跳过",
-                len(new_ids),
-                len(processed) - len(new_ids),
+                len(new_ids_all),
+                len(processed) - len(new_ids_all),
             )
         else:
             self.conn.commit()
             logger.info("批量存储完成: 全部 %d 条已存在，跳过", len(processed))
 
         return ids
+
+    def _insert_batch_chunk(self, chunk: list[tuple[int, dict]]) -> list[int]:
+        """写入一批新条目（主表 + FTS5 + 向量），返回新 id 列表
+
+        Args:
+            chunk: [(原始索引, 处理后的 item), ...]
+
+        每批单独执行主表 RETURNING + FTS5/向量写入，
+        供 ``store_batch`` 分块调用以避免 SQL 变量数超限。
+        """
+        main_rows = [
+            (
+                p["content"],
+                p["category"],
+                p["tags_json"],
+                p["importance"],
+                p["expires_at"],
+            )
+            for _, p in chunk
+        ]
+        placeholders = ", ".join("(?, ?, ?, ?, ?)" for _ in chunk)
+        flat_values = []
+        for row in main_rows:
+            flat_values.extend(row)
+
+        cursor = self.conn.execute(
+            f"INSERT INTO memories (content, category, tags, "
+            f"importance, expires_at) VALUES {placeholders} RETURNING id",
+            flat_values,
+        )
+        new_ids = [row[0] for row in cursor.fetchall()]
+
+        # FTS5 批量写入
+        fts_rows = [
+            (
+                new_ids[j],
+                tokenize(p["content"]),
+                p["tags_json"],
+                p["category"],
+            )
+            for j, (_, p) in enumerate(chunk)
+        ]
+        self.conn.executemany(
+            "INSERT INTO memories_fts (rowid, content, tags, "
+            "category) VALUES (?, ?, ?, ?)",
+            fts_rows,
+        )
+
+        # 向量批量写入（embed_batch 一次推理，避免逐条 ONNX 调用）
+        if self._has_vec() and self._embedder:
+            import numpy as np
+
+            new_contents = [p["content"] for _, p in chunk]
+            embeddings = self._embedder.embed_batch(new_contents)
+            vec_rows = [
+                (
+                    new_ids[j],
+                    np.array(emb, dtype=np.float32).tobytes(),
+                )
+                for j, emb in enumerate(embeddings)
+            ]
+            self.conn.executemany(
+                "INSERT INTO memories_vec (id, embedding) VALUES (?, ?)",
+                vec_rows,
+            )
+        return new_ids

@@ -67,12 +67,11 @@ def run_migrations(conn) -> None:
     except Exception:
         current = 0
 
-    if current < 1:
-        _migrate_v1(conn)
-        current = 1
-
     if current < SCHEMA_VERSION:
-        # 统一写入最新版本号（INSERT OR REPLACE 避免重复）
+        if current < 1:
+            _migrate_v1(conn)
+        # 迁移完成后统一写入最新版本号（INSERT OR REPLACE 避免重复）。
+        # 修复：v0→v1 迁移后也必须落库，否则每次启动都重跑迁移。
         conn.execute(
             "INSERT OR REPLACE INTO schema_version (version) VALUES (?)",
             (SCHEMA_VERSION,),

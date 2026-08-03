@@ -144,25 +144,39 @@ class SearchEngine:
         """关键词搜索（使用 BM25 排序）"""
         tokenized_query = tokenize_for_fts5(query)
 
-        # 使用 bm25() 替代 rank 获得更好的排序质量
-        rows = self.conn.execute(
-            """
-            SELECT m.id, m.content, m.category, m.tags, m.created_at,
-                   bm25(memories_fts) AS rank
-            FROM memories_fts fts
-            JOIN memories m ON m.id = fts.rowid
-            WHERE memories_fts MATCH ?
-            ORDER BY rank
-            LIMIT ?
-            """,
-            (tokenized_query, limit),
-        ).fetchall()
+        # 空查询（纯空白/纯特殊字符被过滤）直接返回空，避免 MATCH '' 语法错误
+        if not tokenized_query:
+            return []
+
+        # 使用 bm25() 替代 rank 获得更好的排序质量。
+        # FTS5 对特殊字符（如引号）可能抛语法错误，捕获后兜底返回空结果。
+        try:
+            rows = self.conn.execute(
+                """
+                SELECT m.id, m.content, m.category, m.tags, m.created_at,
+                       bm25(memories_fts) AS rank
+                FROM memories_fts fts
+                JOIN memories m ON m.id = fts.rowid
+                WHERE memories_fts MATCH ?
+                  AND (m.expires_at IS NULL OR m.expires_at > datetime('now'))
+                ORDER BY rank
+                LIMIT ?
+                """,
+                (tokenized_query, limit),
+            ).fetchall()
+        except sqlite3.OperationalError:
+            logger.warning("FTS5 查询语法错误，返回空结果: %r", query)
+            return []
 
         if update:
             update_access(self.conn, rows)
 
+        # score 越大越相关，与 semantic 模式（1/(1+distance)）语义一致
         return [
-            _row_to_dict(row, score=round(1.0 / (1.0 + abs(row["rank"])), 4))
+            _row_to_dict(
+                row,
+                score=round(1.0 - 1.0 / (1.0 + abs(row["rank"])), 4),
+            )
             for row in rows
         ]
 
@@ -196,6 +210,7 @@ class SearchEngine:
             FROM memories_vec vec
             JOIN memories m ON m.id = vec.id
             WHERE embedding MATCH ? AND k = ?
+              AND (m.expires_at IS NULL OR m.expires_at > datetime('now'))
             ORDER BY distance
             """,
             (query_bytes, limit),

@@ -96,5 +96,7 @@ def tokenize_for_fts5(query: str) -> str:
         ]
     if not words:
         return ""
-    # 统一用双引号包裹，避免 FTS5 单搜索词触发前缀匹配
-    return " AND ".join(f'"{w}"' for w in words)
+    # 统一用双引号包裹（避免 FTS5 单搜索词触发前缀匹配）。
+    # 短语内双引号用 "" 转义，防止用户输入含引号导致语法错误。
+    escaped = [w.replace('"', '""') for w in words]
+    return " AND ".join(f'"{w}"' for w in escaped)
