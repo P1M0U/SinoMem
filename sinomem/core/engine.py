@@ -184,6 +184,17 @@ class MemoryEngine:
         """清空所有向量（公共 API，供 migrate 等使用）"""
         return self._store.clear_vectors()
 
+    def recreate_vec_table(self, new_dim: int) -> None:
+        """重建向量表为指定维度（模型切换场景，供 migrate --force 使用）
+
+        仅清空向量（clear_vectors）无法改变 vec0 表声明的维度，
+        切换不同维度的模型时必须重建表。
+        """
+        self._conn.execute("DROP TABLE IF EXISTS memories_vec")
+        self._conn.execute(vec_table_sql(new_dim))
+        self._conn.commit()
+        self._vec_dim = new_dim
+
     def embed_batch(self, texts: list[str]) -> list[list[float]] | None:
         """批量文本嵌入（公共 API，供 migrate 等使用）
 

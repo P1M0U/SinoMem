@@ -43,14 +43,17 @@ def store(ctx, content, category, tags, allow_duplicate, ttl, importance):
         [t.strip() for t in tags.split(",") if t.strip()] if tags else []
     )
     engine = ctx.obj["engine"]
-    memory_id = engine.store(
-        content,
-        category,
-        tag_list,
-        skip_duplicate=not allow_duplicate,
-        ttl=ttl,
-        importance=importance,
-    )
+    try:
+        memory_id = engine.store(
+            content,
+            category,
+            tag_list,
+            skip_duplicate=not allow_duplicate,
+            ttl=ttl,
+            importance=importance,
+        )
+    except ValueError as e:
+        raise click.ClickException(str(e)) from e
     click.echo(f"ok  id={memory_id}")
 
 
@@ -63,7 +66,7 @@ def store(ctx, content, category, tags, allow_duplicate, ttl, importance):
     type=click.Choice(["keyword", "semantic", "hybrid"]),
     help="搜索模式（keyword: BM25, hybrid: RRF融合）",
 )
-@click.option("-l", "--limit", default=5, help="返回条数")
+@click.option("-l", "--limit", default=5, type=int, help="返回条数")
 @click.pass_context
 def search(ctx, query, mode, limit):
     """搜索记忆"""
@@ -130,7 +133,7 @@ def delete(ctx, memory_id):
 
 @main.command("list")
 @click.option("-c", "--category", default=None, help="按分类过滤")
-@click.option("-l", "--limit", default=20, help="返回条数")
+@click.option("-l", "--limit", default=20, type=int, help="返回条数")
 @click.pass_context
 def list_memories(ctx, category, limit):
     """列出记忆（排除过期）"""
@@ -187,20 +190,27 @@ def vacuum(ctx):
 @main.command()
 @click.option("--db", "db_path", default=None, help="数据库路径")
 @click.option("--model-dir", default=None, help="嵌入模型目录")
-@click.option("--batch-size", default=50, help="批量大小")
+@click.option("--batch-size", default=50, type=int, help="批量大小")
 @click.option(
     "--force",
     is_flag=True,
     help="强制重建所有向量（模型切换后使用）",
 )
 @click.option("--no-embed", is_flag=True, help="禁用嵌入模型（仅 FTS5）")
-def migrate(db_path, model_dir, batch_size, force, no_embed):
+@click.pass_context
+def migrate(ctx, db_path, model_dir, batch_size, force, no_embed):
     """为已有记忆生成向量嵌入"""
     from ..tools.migrate import migrate_memories
 
     if no_embed:
-        click.echo("错误: --no-embed 与 migrate 互斥（迁移需要嵌入模型）")
-        return
+        raise click.ClickException(
+            "--no-embed 与 migrate 互斥（迁移需要嵌入模型）"
+        )
+
+    # 子命令未指定 --db 时回退到 group 级 --db，避免静默操作默认库
+    if db_path is None:
+        db_path = ctx.parent.params.get("db")
+
     result = migrate_memories(db_path, model_dir, batch_size, force)
     extra = ""
     if result.get("dim_changed"):
@@ -218,13 +228,22 @@ def migrate(db_path, model_dir, batch_size, force, no_embed):
 @click.option("--db", "db_path", default=None, help="目标数据库路径")
 @click.option("--dry-run", is_flag=True, help="仅预览，不实际写入")
 @click.option("--no-embed", is_flag=True, help="禁用嵌入模型（仅 FTS5）")
-def import_memories(source, db_path, dry_run, no_embed):
+@click.pass_context
+def import_memories(ctx, source, db_path, dry_run, no_embed):
     """从 holographic memory 导入记忆"""
     from ..tools.import_holographic import import_from_holographic
 
-    result = import_from_holographic(
-        source, db_path, dry_run, no_embed=no_embed
-    )
+    # 子命令未指定 --db 时回退到 group 级 --db，避免静默操作默认库
+    if db_path is None:
+        db_path = ctx.parent.params.get("db")
+
+    try:
+        result = import_from_holographic(
+            source, db_path, dry_run, no_embed=no_embed
+        )
+    except FileNotFoundError as e:
+        raise click.ClickException(str(e)) from e
+
     if dry_run:
         click.echo(f"would import {result['total']} facts (dry run)")
         return
@@ -240,7 +259,10 @@ def import_memories(source, db_path, dry_run, no_embed):
 def clean(ctx, category, force):
     """批量删除记忆（按分类或清空全部）"""
     engine = ctx.obj["engine"]
-    if category:
+    if category is not None:
+        # 空字符串显式拒绝，防止误入"清空全部"分支
+        if category == "":
+            raise click.ClickException("分类不能为空字符串")
         if not force:
             s = engine.stats()
             cat_count = s["categories"].get(category, 0)
@@ -282,15 +304,23 @@ def store_batch_cmd(ctx, json_file, allow_duplicate):
     try:
         data = _json.loads(raw)
         if not isinstance(data, list):
-            click.echo("错误: JSON 必须是数组格式 [...]")
-            return
+            raise click.ClickException("错误: JSON 必须是数组格式 [...]")
     except _json.JSONDecodeError:
-        # 尝试按行解析
-        data = [
-            _json.loads(line)
-            for line in raw.strip().splitlines()
-            if line.strip()
-        ]
+        # 尝试按行解析（逐行容错：非法行收集并报错，不抛裸 traceback）
+        data = []
+        bad_lines = []
+        for line in raw.strip().splitlines():
+            if not line.strip():
+                continue
+            try:
+                data.append(_json.loads(line))
+            except _json.JSONDecodeError:
+                bad_lines.append(line.strip()[:50])
+        if bad_lines:
+            raise click.ClickException(
+                f"错误: {len(bad_lines)} 行 JSON 解析失败，"
+                f"例如: {bad_lines[0]!r}"
+            ) from None
 
     if not data:
         click.echo("(empty)")
@@ -299,9 +329,8 @@ def store_batch_cmd(ctx, json_file, allow_duplicate):
     engine = ctx.obj["engine"]
     try:
         ids = engine.store_batch(data, skip_duplicate=not allow_duplicate)
-    except ValueError as e:
-        click.echo(f"错误: {e}")
-        return
+    except (ValueError, KeyError) as e:
+        raise click.ClickException(f"错误: {e}") from e
 
     for i, mid in enumerate(ids):
         click.echo(f"[{i + 1}/{len(ids)}] ok  id={mid}")
@@ -316,7 +345,7 @@ def store_batch_cmd(ctx, json_file, allow_duplicate):
     type=click.Choice(["keyword", "semantic", "hybrid"]),
     help="搜索模式",
 )
-@click.option("-l", "--limit", default=5, help="每个查询返回条数")
+@click.option("-l", "--limit", default=5, type=int, help="每个查询返回条数")
 @click.pass_context
 def search_batch_cmd(ctx, queries, mode, limit):
     """批量搜索多个关键词

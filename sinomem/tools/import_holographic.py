@@ -1,12 +1,15 @@
 """从 holographic memory_store.db 迁移数据到 SinoMem"""
 
 import json
+import logging
 import sqlite3
 from pathlib import Path
 
 import click
 
 from ..core.engine import MemoryEngine
+
+logger = logging.getLogger("sinomem.tools.import_holographic")
 
 
 def import_from_holographic(
@@ -16,6 +19,9 @@ def import_from_holographic(
 
     Returns:
         {"imported": N, "skipped": N, "total": N}
+
+    说明: 上游 trust_score 归一化映射为 importance（0~1）；
+    retrieval_count 无对应字段，导入时忽略。
     """
     source = (
         Path(source) if source else Path.home() / ".hermes" / "memory_store.db"
@@ -45,37 +51,73 @@ def import_from_holographic(
         from ..core.engine import create_engine
 
         engine = create_engine(db_path)
-    imported = 0
-    skipped = 0
+    try:
+        imported = 0
+        skipped = 0
 
-    for f in facts:
-        # 检查是否已存在（按内容去重，使用 engine 公开 API）
-        if engine.exists_by_content(f["content"]):
-            skipped += 1
-            continue
+        for f in facts:
+            content = f["content"]
+            # 跳过空/无效内容：单条脏数据不中断整个导入
+            if not content or not str(content).strip():
+                skipped += 1
+                continue
 
-        # 解析 tags
-        tags = []
-        if f["tags"]:
+            # 检查是否已存在（按内容去重，使用 engine 公开 API）
+            if engine.exists_by_content(content):
+                skipped += 1
+                continue
+
+            # 解析 tags（校验为列表，非数组 JSON 回退逗号拆分）
+            tags = []
+            if f["tags"]:
+                try:
+                    tags = (
+                        json.loads(str(f["tags"]))
+                        if str(f["tags"]).startswith("[")
+                        else [
+                            t.strip()
+                            for t in str(f["tags"]).split(",")
+                            if t.strip()
+                        ]
+                    )
+                    if not isinstance(tags, list):
+                        tags = [
+                            t.strip()
+                            for t in str(f["tags"]).split(",")
+                            if t.strip()
+                        ]
+                except (json.JSONDecodeError, TypeError):
+                    tags = [
+                        t.strip()
+                        for t in str(f["tags"]).split(",")
+                        if t.strip()
+                    ]
+
+            # trust_score 归一化映射为 importance（0~1）
+            importance = 0.5
             try:
-                tags = (
-                    json.loads(f["tags"])
-                    if f["tags"].startswith("[")
-                    else [t.strip() for t in f["tags"].split(",") if t.strip()]
+                if f["trust_score"] is not None:
+                    importance = max(0.0, min(1.0, float(f["trust_score"])))
+            except (TypeError, ValueError):
+                pass
+
+            try:
+                engine.store(
+                    content=content,
+                    category=f["category"] or "general",
+                    tags=tags,
+                    skip_duplicate=False,  # 上游已做去重，跳过重复检查
+                    importance=importance,
                 )
-            except (json.JSONDecodeError, TypeError):
-                tags = [t.strip() for t in f["tags"].split(",") if t.strip()]
+                imported += 1
+            except ValueError as e:
+                # 单条失败不中断导入，记录后继续
+                skipped += 1
+                logger.warning("导入失败，已跳过: %s", e)
 
-        engine.store(
-            content=f["content"],
-            category=f["category"] or "general",
-            tags=tags,
-            skip_duplicate=False,  # 上游已做 exists_by_content 去重，跳过重复检查
-        )
-        imported += 1
-
-    engine.close()
-    return {"imported": imported, "skipped": skipped, "total": total}
+        return {"imported": imported, "skipped": skipped, "total": total}
+    finally:
+        engine.close()
 
 
 @click.command()
