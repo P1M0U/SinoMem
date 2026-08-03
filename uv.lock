@@ -1550,11 +1550,8 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-dev = [
-    { name = "pytest" },
-    { name = "ruff" },
-]
 embedding = [
+    { name = "huggingface-hub" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.1", source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "onnxruntime" },
@@ -1573,15 +1570,14 @@ dev = [
 requires-dist = [
     { name = "click", specifier = ">=8.0" },
     { name = "fastmcp", specifier = ">=3.0" },
+    { name = "huggingface-hub", marker = "extra == 'embedding'", specifier = ">=0.23" },
     { name = "jieba", specifier = ">=0.42" },
     { name = "numpy", marker = "extra == 'embedding'", specifier = ">=1.24" },
     { name = "onnxruntime", marker = "extra == 'embedding'", specifier = ">=1.27.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1" },
     { name = "sqlite-vec", marker = "extra == 'embedding'", specifier = ">=0.1.9" },
     { name = "tokenizers", specifier = ">=0.23.1" },
 ]
-provides-extras = ["embedding", "dev"]
+provides-extras = ["embedding"]
 
 [package.metadata.requires-dev]
 dev = [
