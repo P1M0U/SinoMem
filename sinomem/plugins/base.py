@@ -27,9 +27,11 @@ class BasePlugin:
         self,
         engine=None,
         db_path: str | Path | None = None,
+        use_embedder: bool = True,
     ):
         self._engine = engine
         self._db_path = Path(db_path) if db_path else DEFAULT_DB_PATH
+        self._use_embedder = use_embedder
 
     # ── 引擎懒加载 ──
 
@@ -38,7 +40,9 @@ class BasePlugin:
         if self._engine is None:
             from ..core.engine import create_engine
 
-            self._engine = create_engine(str(self._db_path))
+            self._engine = create_engine(
+                str(self._db_path), with_embedder=self._use_embedder
+            )
         return self._engine
 
     # ── 核心 API ──

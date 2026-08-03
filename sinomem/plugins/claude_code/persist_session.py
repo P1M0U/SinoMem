@@ -22,7 +22,6 @@
 
 import json
 import sys
-from datetime import UTC, datetime
 
 # 优先从已安装的包导入，回退到 sys.path
 try:
@@ -43,24 +42,24 @@ def main():
     except (json.JSONDecodeError, OSError):
         return
 
-    # 从事件中提取会话信息
-    session_id = event.get("session_id", "unknown")
+    # 从事件中提取会话摘要（有真实内容才写入，
+    # 避免每会话写入无价值的占位记录污染记忆库）
+    summary = event.get("summary", "") or event.get("result", "")
+    if not summary or len(summary) < 10:
+        return
 
-    # 记录会话结束标记
-    plugin = BasePlugin()
+    # 钩子低频触发但保持轻量，禁用嵌入模型
+    plugin = BasePlugin(use_embedder=False)
     try:
         plugin.auto_store(
-            content=(
-                f"Claude Code 会话结束 "
-                f"(session={session_id[:12]}..., "
-                f"time={datetime.now(UTC).isoformat()[:19]}Z)"
-            ),
+            content=f"Claude Code 会话结束摘要: {summary[:500]}",
             category="tool",
             tags=["session-end", "claude-code"],
             ttl="90d",
         )
-    except Exception:
-        pass
+    except Exception as e:
+        # 存储失败不影响主流程，但输出到 stderr 便于排查
+        print(f"[sinomem] persist_session 存储失败: {e}", file=sys.stderr)
     finally:
         plugin.close()
 

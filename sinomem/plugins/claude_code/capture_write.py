@@ -85,15 +85,17 @@ def main():
     if not content or len(content) < 10:
         return
 
-    plugin = BasePlugin()
+    # 钩子高频触发，禁用嵌入模型避免每次加载 ONNX 模型
+    plugin = BasePlugin(use_embedder=False)
     try:
         plugin.auto_store(
             content=f"[{file_path}] {content[:500]}",
             category="project",
             tags=["auto-captured", "claude-code"],
         )
-    except Exception:
-        pass  # 存储失败不影响主流程
+    except Exception as e:
+        # 存储失败不影响主流程，但输出到 stderr 便于排查（Claude Code 捕获）
+        print(f"[sinomem] capture_write 存储失败: {e}", file=sys.stderr)
     finally:
         plugin.close()
 

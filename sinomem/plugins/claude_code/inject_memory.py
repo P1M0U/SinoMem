@@ -50,11 +50,13 @@ def main():
         print("", end="")
         return
 
-    plugin = BasePlugin()
+    # 钩子每次触发都重建引擎，使用 keyword 模式 + 禁用嵌入模型，
+    # 避免加载 ONNX 模型造成 ~1s 延迟
+    plugin = BasePlugin(use_embedder=False)
     try:
         enhanced = plugin.inject_context(
             current_prompt=prompt,
-            mode="hybrid",
+            mode="keyword",
             limit=3,
         )
         # 返回增强后的 prompt（Claude Code 会替换原 prompt）

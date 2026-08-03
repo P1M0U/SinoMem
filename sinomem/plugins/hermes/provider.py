@@ -20,21 +20,36 @@ _writing_flag: contextvars.ContextVar[bool] = contextvars.ContextVar(
     "_sinomem_writing", default=False
 )
 
-# Hermes 运行时依赖（仅在 Hermes 环境中可用）
-from agent.memory_provider import MemoryProvider  # noqa: E402
-from tools.registry import tool_error  # noqa: E402
+# Hermes 运行时依赖（仅在 Hermes 环境中可用）。
+# 非 Hermes 环境用占位基类保证模块可导入（HermesPlugin 无需 MemoryProvider），
+# register() 仅由 Hermes 插件加载器调用，彼时使用的是真实基类。
+try:
+    from agent.memory_provider import MemoryProvider  # noqa: E402
+    from tools.registry import tool_error  # noqa: E402
 
+    _HERMES_AVAILABLE = True
+except ImportError:
+    _HERMES_AVAILABLE = False
+
+    class _MemoryProviderPlaceholder:
+        """非 Hermes 环境的占位基类，仅保证模块可导入"""
+
+    MemoryProvider = _MemoryProviderPlaceholder  # type: ignore[misc, assignment]
+
+    def tool_error(msg):  # noqa: ARG001
+        return f"error: {msg}"
+
+
+from ...core.config import DEFAULT_DB_PATH  # noqa: E402
 from ...core.engine import create_engine as _create_engine  # noqa: E402
 
 # ── 路径配置 ──
 
-_AGENT_MEMORY_DB = Path.home() / ".sinomem" / "memory.db"
-
-# 后向兼容：保留 SINOMEM_HOME 环境变量，用于自定义数据库路径
+# 默认数据库路径：优先 SINOMEM_DB_PATH（与 CLI/MCP 一致），
+# 后向兼容 SINOMEM_HOME 环境变量
+_AGENT_MEMORY_DB = DEFAULT_DB_PATH
 if os.environ.get("SINOMEM_HOME"):
-    _db_override = Path(os.environ["SINOMEM_HOME"]) / "memory.db"
-    if _db_override.parent.exists():
-        _AGENT_MEMORY_DB = _db_override
+    _AGENT_MEMORY_DB = Path(os.environ["SINOMEM_HOME"]) / "memory.db"
 
 
 # ── Provider 实现 ──
@@ -207,6 +222,10 @@ class SinoMemProvider(MemoryProvider):
     def handle_tool_call(self, tool_name: str, arguments: dict) -> str:
         """处理工具调用"""
         import json
+
+        # 引擎未初始化时给出明确错误（register 后未 initialize 的场景）
+        if self._engine is None:
+            return tool_error("provider 未初始化，请先调用 initialize()")
 
         try:
             if tool_name == "memory_search":

@@ -296,20 +296,28 @@ class MemoryEngine:
 def create_engine(
     db_path: str | Path | None = None,
     model_dir: str | Path | None = None,
+    with_embedder: bool = True,
 ) -> MemoryEngine:
-    """统一创建 MemoryEngine，自动处理 Embedder 降级与模型下载"""
+    """统一创建 MemoryEngine，自动处理 Embedder 降级与模型下载
+
+    Args:
+        with_embedder: False 时跳过嵌入模型加载（纯 FTS5），
+            用于高频轻量调用场景（如 Claude Code 钩子），
+            避免每次加载 ONNX 模型的开销。
+    """
     embedder = None
-    try:
-        from .embedder import Embedder, ensure_model
+    if with_embedder:
+        try:
+            from .embedder import Embedder, ensure_model
 
-        # 模型缺失时尝试自动下载
-        ensure_model(model_dir)
+            # 模型缺失时尝试自动下载
+            ensure_model(model_dir)
 
-        embedder = Embedder(model_dir)
-        _ = embedder.dim
-    except Exception as e:
-        logger.warning("嵌入模型加载失败，降级为纯 FTS5 搜索: %s", e)
-        embedder = None
+            embedder = Embedder(model_dir)
+            _ = embedder.dim
+        except Exception as e:
+            logger.warning("嵌入模型加载失败，降级为纯 FTS5 搜索: %s", e)
+            embedder = None
 
     try:
         return MemoryEngine(db_path, embedder=embedder)
