@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "gitee": {
+      "command": "npx",
+      "args": ["-y", "mcp-gitee"],
+      "env": {
+        "GITEE_API_BASE": "https://gitee.com/api/v5",
+        "GITEE_ACCESS_TOKEN": "Personal Token"
+      }
+    }
+  }
+}
