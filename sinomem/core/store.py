@@ -3,6 +3,7 @@
 import functools
 import json
 import sqlite3
+import threading
 import time
 from datetime import UTC, datetime, timedelta
 
@@ -14,6 +15,9 @@ logger = get_logger(__name__)
 
 # 内容最大长度（字符数），防止 LLM 写入超长文本导致搜索质量下降
 MAX_CONTENT_LENGTH = 8000
+
+# 最大 TTL 时长（秒，10 年），防止极端输入（如 "999999999d"）导致日期溢出
+_MAX_TTL_SECONDS = 3650 * 86400
 
 
 def _parse_ttl(ttl: str | None) -> str | None:
@@ -42,12 +46,20 @@ def _parse_ttl(ttl: str | None) -> str | None:
     if total_seconds <= 0:
         return None
 
-    # TTL 时长叠加到当前时间，且格式与 SQLite 时间字符串对齐
-    return (
-        (datetime.now(UTC) + timedelta(seconds=total_seconds))
-        .replace(microsecond=0)
-        .strftime("%Y-%m-%d %H:%M:%S")
-    )
+    # 钳制到最大 TTL，防止极端输入（如 "999999999d"）导致 timedelta 溢出
+    total_seconds = min(total_seconds, _MAX_TTL_SECONDS)
+
+    try:
+        # TTL 时长叠加到当前时间，且格式与 SQLite 时间字符串对齐
+        return (
+            (datetime.now(UTC) + timedelta(seconds=total_seconds))
+            .replace(microsecond=0)
+            .strftime("%Y-%m-%d %H:%M:%S")
+        )
+    except OverflowError:
+        # 极端输入仍溢出时兜底，忽略 TTL 避免调用方崩溃
+        logger.warning("TTL 时长超出范围，已忽略: {}", ttl)
+        return None
 
 
 def _retry_on_lock(max_retries: int = 3, base_delay: float = 0.05):
@@ -68,6 +80,13 @@ def _retry_on_lock(max_retries: int = 3, base_delay: float = 0.05):
                     # 清理未提交事务，避免重试非幂等事务产生重复/幽灵数据
                     self.conn.rollback()
                     if "locked" not in str(e) or attempt == max_retries - 1:
+                        raise
+                    time.sleep(base_delay * (2**attempt))
+                except sqlite3.IntegrityError:
+                    # 约束冲突（如并发去重竞态下的重复写入）：回滚后重试，
+                    # 多次仍冲突则原样抛出，避免掩盖真实错误
+                    self.conn.rollback()
+                    if attempt == max_retries - 1:
                         raise
                     time.sleep(base_delay * (2**attempt))
                 except Exception:
@@ -93,6 +112,8 @@ class MemoryStore:
         self.conn = conn
         self._embedder = embedder
         self._vec_dim = vec_dim
+        # 写操作串行化锁：共享同一连接的并发写会导致事务嵌套/IntegrityError
+        self._write_lock = threading.RLock()
 
     def _has_vec(self) -> bool:
         """是否有向量表"""
@@ -125,7 +146,7 @@ class MemoryStore:
         content = content.strip()
         if len(content) > MAX_CONTENT_LENGTH:
             content = content[:MAX_CONTENT_LENGTH]
-            logger.warning("内容过长，已截断至 %d 字符", MAX_CONTENT_LENGTH)
+            logger.warning("内容过长，已截断至 {} 字符", MAX_CONTENT_LENGTH)
 
         if not content:
             raise ValueError("内容不能为空")
@@ -136,57 +157,78 @@ class MemoryStore:
         # 解析 TTL
         expires_at = _parse_ttl(ttl)
 
-        # 自动去重：检查是否已存在相同内容
-        if skip_duplicate and self.exists_by_content(content):
-            row = self.conn.execute(
-                "SELECT id FROM memories WHERE content = ? LIMIT 1",
-                (content,),
-            ).fetchone()
-            logger.info(
-                "跳过重复内容 id=%d category=%s ttl=%s",
-                row["id"],
-                category,
-                ttl or "none",
-            )
-            return row["id"]
+        # 写锁串行化 + BEGIN IMMEDIATE：使"去重检查 + 插入"成为原子操作。
+        # - 同一连接多线程：_write_lock 防止事务嵌套/IntegrityError 崩溃
+        # - 跨连接（多进程）：BEGIN IMMEDIATE 写锁互斥，A 提交后 B 才可见数据，
+        #   从而跨进程去重也生效
+        with self._write_lock:
+            # 检测外部已开事务（如调用方手动 BEGIN）：已处于事务时不显式
+            # BEGIN/COMMIT，避免 "cannot start a transaction within a transaction"
+            in_ext_txn = self.conn.in_transaction
+            if not in_ext_txn:
+                self.conn.execute("BEGIN IMMEDIATE")
+            try:
+                # 自动去重：检查是否已存在相同内容
+                if skip_duplicate and self.exists_by_content(content):
+                    row = self.conn.execute(
+                        "SELECT id FROM memories WHERE content = ? LIMIT 1",
+                        (content,),
+                    ).fetchone()
+                    logger.info(
+                        "跳过重复内容 id={} category={} ttl={}",
+                        row["id"],
+                        category,
+                        ttl or "none",
+                    )
+                    if not in_ext_txn:
+                        self.conn.commit()
+                    return row["id"]
 
-        tags_json = json.dumps(tags, ensure_ascii=False)
-        tokenized = tokenize(content)
+                tags_json = json.dumps(tags, ensure_ascii=False)
+                tokenized = tokenize(content)
 
-        cursor = self.conn.execute(
-            "INSERT INTO memories (content, category, tags, importance, "
-            "expires_at) VALUES (?, ?, ?, ?, ?)",
-            (content, category, tags_json, importance, expires_at),
-        )
-        row_id = cursor.lastrowid
+                cursor = self.conn.execute(
+                    "INSERT INTO memories (content, category, tags, "
+                    "importance, expires_at) VALUES (?, ?, ?, ?, ?)",
+                    (content, category, tags_json, importance, expires_at),
+                )
+                row_id = cursor.lastrowid
 
-        # FTS5 双写
-        self.conn.execute(
-            "INSERT INTO memories_fts (rowid, content, tags, category) "
-            "VALUES (?, ?, ?, ?)",
-            (row_id, tokenized, tags_json, category),
-        )
+                # FTS5 双写
+                self.conn.execute(
+                    "INSERT INTO memories_fts (rowid, content, tags, "
+                    "category) VALUES (?, ?, ?, ?)",
+                    (row_id, tokenized, tags_json, category),
+                )
 
-        # 向量存储（仅向量模式下才 import numpy）
-        if self._has_vec() and self._embedder:
-            import numpy as np
+                # 向量存储（仅向量模式下才 import numpy）
+                if self._has_vec() and self._embedder:
+                    import numpy as np
 
-            embedding = self._embedder.embed(content)
-            embedding_bytes = np.array(embedding, dtype=np.float32).tobytes()
-            self.conn.execute(
-                "INSERT INTO memories_vec (id, embedding) VALUES (?, ?)",
-                (row_id, embedding_bytes),
-            )
+                    embedding = self._embedder.embed(content)
+                    embedding_bytes = np.array(
+                        embedding, dtype=np.float32
+                    ).tobytes()
+                    self.conn.execute(
+                        "INSERT INTO memories_vec (id, embedding) "
+                        "VALUES (?, ?)",
+                        (row_id, embedding_bytes),
+                    )
 
-        self.conn.commit()
-        logger.info(
-            "存储记忆 id=%d category=%s importance=%.2f ttl=%s",
-            row_id,
-            category,
-            importance,
-            ttl or "none",
-        )
-        return row_id
+                if not in_ext_txn:
+                    self.conn.commit()
+                logger.info(
+                    "存储记忆 id={} category={} importance={:.2f} ttl={}",
+                    row_id,
+                    category,
+                    importance,
+                    ttl or "none",
+                )
+                return row_id
+            except Exception:
+                if not in_ext_txn:
+                    self.conn.rollback()
+                raise
 
     def get(self, memory_id: int) -> dict | None:
         """获取指定记忆"""
@@ -274,7 +316,7 @@ class MemoryStore:
             )
 
         self.conn.commit()
-        logger.info("更新记忆 id=%d", memory_id)
+        logger.info("更新记忆 id={}", memory_id)
         return True
 
     @_retry_on_lock()
@@ -293,7 +335,7 @@ class MemoryStore:
             )
         self.conn.execute("DELETE FROM memories WHERE id=?", (memory_id,))
         self.conn.commit()
-        logger.info("删除记忆 id=%d", memory_id)
+        logger.info("删除记忆 id={}", memory_id)
         return True
 
     def list_memories(
@@ -342,6 +384,30 @@ class MemoryStore:
             "vector_enabled": self._has_vec(),
         }
 
+    def _delete_ids(self, ids: list[int]) -> None:
+        """分块删除三表记录，规避 SQLite 单条 SQL 变量数上限
+
+        与 store_batch 的分块写入保持一致（老版本上限 999 / 新版本 32766）。
+        cleanup_expired / delete_by_category 均使用本方法，commit 由调用方负责。
+        """
+        # 单条 SQL 变量数上限的最低兼容值（老版本 999），留余量取 500/批
+        _DELETE_CHUNK = 500
+        for start in range(0, len(ids), _DELETE_CHUNK):
+            chunk = ids[start : start + _DELETE_CHUNK]
+            placeholders = ",".join("?" * len(chunk))
+            self.conn.execute(
+                f"DELETE FROM memories_fts WHERE rowid IN ({placeholders})",
+                chunk,
+            )
+            if self._has_vec():
+                self.conn.execute(
+                    f"DELETE FROM memories_vec WHERE id IN ({placeholders})",
+                    chunk,
+                )
+            self.conn.execute(
+                f"DELETE FROM memories WHERE id IN ({placeholders})", chunk
+            )
+
     @_retry_on_lock()
     def cleanup_expired(self) -> int:
         """清理过期记忆，返回删除条数"""
@@ -356,20 +422,9 @@ class MemoryStore:
         if not ids:
             return 0
 
-        placeholders = ",".join("?" * len(ids))
-        self.conn.execute(
-            f"DELETE FROM memories_fts WHERE rowid IN ({placeholders})",
-            ids,
-        )
-        if self._has_vec():
-            self.conn.execute(
-                f"DELETE FROM memories_vec WHERE id IN ({placeholders})", ids
-            )
-        self.conn.execute(
-            f"DELETE FROM memories WHERE id IN ({placeholders})", ids
-        )
+        self._delete_ids(ids)
         self.conn.commit()
-        logger.info("清理过期记忆: %d 条", len(ids))
+        logger.info("清理过期记忆: {} 条", len(ids))
         return len(ids)
 
     @_retry_on_lock()
@@ -409,7 +464,7 @@ class MemoryStore:
             logger.error("FTS5 重建失败，已回滚")
             raise
 
-        logger.info("FTS5 重建完成: %d 条", len(rows))
+        logger.info("FTS5 重建完成: {} 条", len(rows))
         return {"reindexed": len(rows)}
 
     def exists_by_content(self, content: str) -> bool:
@@ -491,7 +546,7 @@ class MemoryStore:
             "freed": size_before - size_after,
         }
         logger.info(
-            "VACUUM: %.1f KB → %.1f KB (释放 %.1f KB)",
+            "VACUUM: {:.1f} KB → {:.1f} KB (释放 {:.1f} KB)",
             size_before / 1024,
             size_after / 1024,
             (size_before - size_after) / 1024,
@@ -511,20 +566,9 @@ class MemoryStore:
         if not ids:
             return 0
 
-        placeholders = ",".join("?" * len(ids))
-        self.conn.execute(
-            f"DELETE FROM memories_fts WHERE rowid IN ({placeholders})",
-            ids,
-        )
-        if self._has_vec():
-            self.conn.execute(
-                f"DELETE FROM memories_vec WHERE id IN ({placeholders})", ids
-            )
-        self.conn.execute(
-            f"DELETE FROM memories WHERE id IN ({placeholders})", ids
-        )
+        self._delete_ids(ids)
         self.conn.commit()
-        logger.info("按分类删除: %s → %d 条", category, len(ids))
+        logger.info("按分类删除: {} → {} 条", category, len(ids))
         return len(ids)
 
     @_retry_on_lock()
@@ -538,7 +582,7 @@ class MemoryStore:
             self.conn.execute("DELETE FROM memories_vec")
         self.conn.execute("DELETE FROM memories")
         self.conn.commit()
-        logger.info("清空所有记忆: %d 条", count)
+        logger.info("清空所有记忆: {} 条", count)
         return count
 
     @_retry_on_lock()
@@ -571,7 +615,7 @@ class MemoryStore:
             if len(content) > MAX_CONTENT_LENGTH:
                 content = content[:MAX_CONTENT_LENGTH]
                 logger.warning(
-                    "内容过长，已截断至 %d 字符", MAX_CONTENT_LENGTH
+                    "内容过长，已截断至 {} 字符", MAX_CONTENT_LENGTH
                 )
             category = item.get("category", "general")
             tags = item.get("tags", [])
@@ -588,17 +632,22 @@ class MemoryStore:
                 }
             )
 
-        # ── 2. 批量去重（一次 SQL IN 查询替代逐条 check）──
+        # ── 2. 批量去重（分块 IN 查询，规避 SQLite 变量数上限）──
         content_to_existing_id: dict[str, int] = {}
         if skip_duplicate and processed:
             contents = [p["content"] for p in processed]
-            placeholders = ",".join("?" * len(contents))
-            rows = self.conn.execute(
-                f"SELECT id, content FROM memories "
-                f"WHERE content IN ({placeholders})",
-                contents,
-            ).fetchall()
-            content_to_existing_id = {r["content"]: r["id"] for r in rows}
+            _DEDUP_CHUNK = 500
+            for start in range(0, len(contents), _DEDUP_CHUNK):
+                chunk = contents[start : start + _DEDUP_CHUNK]
+                placeholders = ",".join("?" * len(chunk))
+                rows = self.conn.execute(
+                    f"SELECT id, content FROM memories "
+                    f"WHERE content IN ({placeholders})",
+                    chunk,
+                ).fetchall()
+                content_to_existing_id.update(
+                    {r["content"]: r["id"] for r in rows}
+                )
 
         # ── 3. 分离新条目与已存在条目 ──
         ids: list[int] = []
@@ -608,7 +657,7 @@ class MemoryStore:
                 existing_id = content_to_existing_id[p["content"]]
                 ids.append(existing_id)
                 logger.info(
-                    "跳过重复内容 id=%d category=%s",
+                    "跳过重复内容 id={} category={}",
                     existing_id,
                     p["category"],
                 )
@@ -632,13 +681,13 @@ class MemoryStore:
 
             self.conn.commit()
             logger.info(
-                "批量存储完成: %d 条新增, %d 条跳过",
+                "批量存储完成: {} 条新增, {} 条跳过",
                 len(new_ids_all),
                 len(processed) - len(new_ids_all),
             )
         else:
             self.conn.commit()
-            logger.info("批量存储完成: 全部 %d 条已存在，跳过", len(processed))
+            logger.info("批量存储完成: 全部 {} 条已存在，跳过", len(processed))
 
         return ids
 

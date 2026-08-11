@@ -1,5 +1,6 @@
 """SQLite 存储 + FTS5 中文搜索 + 向量语义搜索"""
 
+import atexit
 import sqlite3
 from pathlib import Path
 
@@ -24,6 +25,7 @@ class MemoryEngine:
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA busy_timeout=5000")
+        self._closed = False
         self._embedder = embedder
         self._vec_dim: int = 0
         self._init_schema()
@@ -35,11 +37,14 @@ class MemoryEngine:
         self._search = SearchEngine(self._conn, embedder, self._vec_dim)
 
         logger.info(
-            "MemoryEngine 初始化完成 db=%s vec=%s schema_version=%d",
+            "MemoryEngine 初始化完成 db={} vec={} schema_version={}",
             self.db_path,
             "enabled" if self._has_vec() else "disabled",
             SCHEMA_VERSION,
         )
+        # 进程退出兜底关闭（幂等，正常路径已关闭时无副作用），
+        # 防止调用方忘记关闭导致的连接泄漏
+        atexit.register(self._atexit_close)
 
     def _init_schema(self):
         """初始化 FTS5 表结构"""
@@ -70,7 +75,7 @@ class MemoryEngine:
         try:
             self._conn.execute(vec_table_sql(self._vec_dim))
             self._conn.commit()
-            logger.info("向量表创建成功 dim=%d", self._vec_dim)
+            logger.info("向量表创建成功 dim={}", self._vec_dim)
         except Exception:
             logger.warning("向量表创建失败，降级为纯 FTS5")
             self._vec_dim = 0
@@ -230,14 +235,23 @@ class MemoryEngine:
         """批量存储记忆（单事务），返回 id 列表"""
         return self._store.store_batch(items, skip_duplicate)
 
-    def search_batch(self, queries: list[dict]) -> list[dict]:
-        """批量搜索（共享模型加载）"""
+    def search_batch(self, queries: list[dict]) -> list[list[dict]]:
+        """批量搜索（共享模型加载），返回每个查询的结果列表"""
         return self._search.search_batch(queries)
 
     def close(self):
-        """关闭数据库连接"""
+        """关闭数据库连接（幂等）"""
+        if self._closed:
+            return
+        self._closed = True
         self._conn.close()
         logger.info("MemoryEngine 已关闭")
+
+    def _atexit_close(self):
+        """atexit 兜底关闭：解释器关闭阶段 logging 流已失效，不打印日志"""
+        if not self._closed:
+            self._closed = True
+            self._conn.close()
 
     def store_with_expiry(
         self,
@@ -316,7 +330,7 @@ def create_engine(
             embedder = Embedder(model_dir)
             _ = embedder.dim
         except Exception as e:
-            logger.warning("嵌入模型加载失败，降级为纯 FTS5 搜索: %s", e)
+            logger.warning("嵌入模型加载失败，降级为纯 FTS5 搜索: {}", e)
             embedder = None
 
     try:
@@ -324,7 +338,7 @@ def create_engine(
     except Exception as e:
         if embedder is not None:
             logger.warning(
-                "创建引擎失败（embedder 相关），降级为纯 FTS5: %s", e
+                "创建引擎失败（embedder 相关），降级为纯 FTS5: {}", e
             )
             embedder = None
             return MemoryEngine(db_path, embedder=embedder)

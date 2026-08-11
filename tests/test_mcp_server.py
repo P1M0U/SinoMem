@@ -138,8 +138,12 @@ class TestMCPTools:
         assert "freed" in res
 
     def test_delete_all_memories_tool(self, setup_engine):
-        """清空所有记忆"""
+        """清空所有记忆（需显式 confirm=True）"""
         store_memory("清空测试")
-        res = delete_all_memories()
+        # 未确认时拒绝执行（防止误调用）
+        with pytest.raises(ValueError, match="confirm"):
+            delete_all_memories()
+        # 确认后执行
+        res = delete_all_memories(confirm=True)
         assert res["deleted"] == 1
         assert memory_stats()["total"] == 0

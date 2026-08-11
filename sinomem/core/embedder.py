@@ -7,12 +7,14 @@
 自动检测模型类型，无需手动配置。
 """
 
+import functools
 import os
 import shutil
 from pathlib import Path
 
 import numpy as np
 import onnxruntime as ort
+from loguru import logger
 from tokenizers import Tokenizer
 
 from .config import DEFAULT_MODEL_DIR
@@ -33,6 +35,9 @@ MAX_SEQ_LEN = 512
 # 批量推理分块大小，避免超大 batch 推理内存溢出
 _EMBED_BATCH_CHUNK = 64
 
+# 嵌入向量 LRU 缓存大小：相同文本复用推理结果，避免重复 ONNX 推理
+_EMBED_CACHE_SIZE = 128
+
 
 def _probe_endpoint(
     endpoint: str | None, timeout: int = _PROBE_TIMEOUT
@@ -46,9 +51,7 @@ def _probe_endpoint(
     Returns:
         True 表示端点可达，False 表示不可达或超时
     """
-    import logging
-
-    _log = logging.getLogger(__name__)
+    _log = logger
 
     try:
         import requests
@@ -64,7 +67,7 @@ def _probe_endpoint(
         return resp.status_code < 400
     except Exception:
         label = endpoint or "huggingface.co"
-        _log.info("端点不可达（%ds 超时）: %s", timeout, label)
+        _log.info("端点不可达（{}s 超时）: {}", timeout, label)
         return False
 
 
@@ -146,9 +149,7 @@ def _consolidate_model_files(
     Returns:
         True 表示合并完成
     """
-    import logging
-
-    _log = logging.getLogger(__name__)
+    _log = logger
 
     onnx_dir = target_dir / "onnx"
     onnx_dir.mkdir(parents=True, exist_ok=True)
@@ -157,11 +158,11 @@ def _consolidate_model_files(
     dest_tokenizer = target_dir / "tokenizer.json"
 
     if not dest_onnx.exists() and found_onnx != dest_onnx:
-        _log.info("复制 %s → %s", found_onnx, dest_onnx)
+        _log.info("复制 {} → {}", found_onnx, dest_onnx)
         shutil.copy2(found_onnx, dest_onnx)
 
     if not dest_tokenizer.exists():
-        _log.info("复制 %s → %s", found_tokenizer, dest_tokenizer)
+        _log.info("复制 {} → {}", found_tokenizer, dest_tokenizer)
         shutil.copy2(found_tokenizer, dest_tokenizer)
 
     return True
@@ -182,9 +183,7 @@ def ensure_model(
     Returns:
         True 表示模型已就绪，False 表示模型不可用
     """
-    import logging
-
-    _log = logging.getLogger(__name__)
+    _log = logger
 
     target_dir = Path(model_dir) if model_dir else DEFAULT_MODEL_DIR
 
@@ -218,7 +217,7 @@ def ensure_model(
     endpoints: list[str | None] = []
     if "HF_ENDPOINT" in os.environ:
         endpoints.append(os.environ["HF_ENDPOINT"])
-        _log.info("使用 HF 镜像: %s", endpoints[0])
+        _log.info("使用 HF 镜像: {}", endpoints[0])
     else:
         # 国内用户优先走 hf-mirror.com，不可达再回退 huggingface.co
         endpoints.append(_MIRROR_HF)
@@ -231,9 +230,9 @@ def ensure_model(
         label = ep or "huggingface.co"
         if _probe_endpoint(ep):
             reachable.append(ep)
-            _log.info("✓ 端点可达: %s", label)
+            _log.info("✓ 端点可达: {}", label)
         else:
-            _log.warning("✗ 端点不可达，跳过: %s", label)
+            _log.warning("✗ 端点不可达，跳过: {}", label)
 
     if not reachable:
         _log.error(
@@ -245,14 +244,14 @@ def ensure_model(
     # 下载时使用较短超时（避免单个端点卡死过久）
     os.environ.setdefault("HF_HUB_DOWNLOAD_TIMEOUT", "8")
 
-    _log.info("正在自动下载嵌入模型 %s → %s ...", repo, target_dir)
+    _log.info("正在自动下载嵌入模型 {} → {} ...", repo, target_dir)
     for filename in files:
         downloaded = False
         last_error = None
         for endpoint in reachable:
             label = endpoint or "huggingface.co"
             try:
-                _log.info("  下载 %s（通过 %s）...", filename, label)
+                _log.info("  下载 {}（通过 {}）...", filename, label)
                 hf_hub_download(
                     repo_id=repo,
                     filename=filename,
@@ -260,14 +259,14 @@ def ensure_model(
                     endpoint=endpoint,
                 )
                 downloaded = True
-                _log.info("  ✓ %s", filename)
+                _log.info("  ✓ {}", filename)
                 break
             except Exception as e:
                 last_error = e
-                _log.debug("  %s 从 %s 下载失败: %s", filename, label, e)
+                _log.debug("  {} 从 {} 下载失败: {}", filename, label, e)
                 continue
         if not downloaded:
-            _log.error("  ✗ %s 下载失败: %s", filename, last_error)
+            _log.error("  ✗ {} 下载失败: {}", filename, last_error)
 
     # 检查最终是否就绪
     onnx_ok = _find_onnx_file(target_dir) is not None
@@ -280,16 +279,24 @@ def _count_session_inputs(session: ort.InferenceSession) -> int:
     return len(session.get_inputs())
 
 
-def _detect_model_type(session: ort.InferenceSession) -> str:
-    """根据 ONNX 模型输出维度自动检测模型类型
+def _detect_model_type(
+    session: ort.InferenceSession, model_name: str = ""
+) -> str:
+    """根据模型文件名 + 输出维度自动检测模型类型
 
-    检测规则：
-    - 512 维 → "bge"（BGE-small 系列）
-    - 384 维 → "minilm"（MiniLM 系列）
-    - 其他 → "minilm"（兜底）
+    优先从模型文件名识别（更可靠，不依赖维度猜测），维度作为兜底：
+    - 名称含 "bge" → "bge"（CLS 池化）
+    - 名称含 "minilm"/"multilingual" → "minilm"（均值池化）
+    - 兜底：512 维 → "bge"，其他 → "minilm"
 
     注意：不按输入数量判断，因为 Xenova 转出来的 BGE 也有 3 个输入。
     """
+    name = model_name.lower()
+    if "bge" in name:
+        return "bge"
+    if "minilm" in name or "multilingual" in name:
+        return "minilm"
+
     output_dim = session.get_outputs()[0].shape[-1]
     output_dim = output_dim if isinstance(output_dim, int) else 0
 
@@ -307,6 +314,10 @@ class Embedder:
         self._tokenizer: Tokenizer | None = None
         self._dim: int = 0
         self._model_type: str = "minilm"  # "bge" | "minilm"
+        # 向量 LRU 缓存（lru_cache 线程安全）：相同文本复用推理结果
+        self._embed_lru = functools.lru_cache(maxsize=_EMBED_CACHE_SIZE)(
+            self._embed_uncached
+        )
 
     @property
     def dim(self) -> int:
@@ -328,9 +339,7 @@ class Embedder:
         使用 _find_onnx_file / _find_tokenizer_json 多路径搜索，
         支持历史下载散落在子目录中的场景。
         """
-        import logging
-
-        _log = logging.getLogger(__name__)
+        _log = logger
 
         # 多路径搜索 ONNX 模型文件
         model_file = _find_onnx_file(self.model_dir)
@@ -344,7 +353,7 @@ class Embedder:
             )
 
         _log.info(
-            "正在加载嵌入模型 %s（首次加载可能耗时数秒）...",
+            "正在加载嵌入模型 {}（首次加载可能耗时数秒）...",
             model_file.name,
         )
         self._session = ort.InferenceSession(
@@ -363,8 +372,8 @@ class Embedder:
 
         self._tokenizer = Tokenizer.from_file(str(tokenizer_path))
 
-        # 自动检测模型类型
-        self._model_type = _detect_model_type(self._session)
+        # 自动检测模型类型（优先按文件名识别）
+        self._model_type = _detect_model_type(self._session, model_file.name)
         self._dim = self._session.get_outputs()[0].shape[-1]
         if not isinstance(self._dim, int):
             self._dim = 384  # 兜底
@@ -373,8 +382,10 @@ class Embedder:
         self._num_inputs = _count_session_inputs(self._session)
 
         _log.info(
-            "嵌入模型加载完成 dim=%d type=%s", self._dim, self._model_type
+            "嵌入模型加载完成 dim={} type={}", self._dim, self._model_type
         )
+        # 模型切换后清空旧向量缓存，避免维度不匹配
+        self._embed_lru.cache_clear()
 
     def _build_inputs(self, ids: list[int], mask: list[int]) -> dict:
         """根据 ONNX 模型实际输入签名构造推理输入 dict"""
@@ -432,10 +443,13 @@ class Embedder:
         return pooled / np.clip(norm, a_min=1e-9, a_max=None)
 
     def embed(self, text: str) -> list[float]:
-        """单条文本嵌入（超长内容截断到模型最大序列长度）"""
+        """单条文本嵌入（LRU 缓存命中时免推理）"""
         if self._session is None:
             self._load()
+        return list(self._embed_lru(text))
 
+    def _embed_uncached(self, text: str) -> tuple[float, ...]:
+        """原始编码（返回 tuple 以便 lru_cache 缓存；调用前需已加载模型）"""
         encoded = self._tokenizer.encode(text)
         # 手动截断到模型最大序列长度（兼容不同 tokenizers 版本 API）
         inputs = self._build_inputs(
@@ -444,7 +458,7 @@ class Embedder:
         outputs = self._session.run(None, inputs)
 
         normalized = self._pool(outputs[0], inputs["attention_mask"])
-        return normalized[0].tolist()
+        return tuple(normalized[0].tolist())
 
     def embed_batch(self, texts: list[str]) -> list[list[float]]:
         """批量文本嵌入 — 利用 ONNX Runtime batch 推理（分块防止 OOM）"""

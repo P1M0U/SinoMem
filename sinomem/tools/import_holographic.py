@@ -1,15 +1,13 @@
 """从 holographic memory_store.db 迁移数据到 SinoMem"""
 
 import json
-import logging
 import sqlite3
 from pathlib import Path
 
 import click
+from loguru import logger
 
 from ..core.engine import MemoryEngine
-
-logger = logging.getLogger("sinomem.tools.import_holographic")
 
 
 def import_from_holographic(
@@ -113,7 +111,7 @@ def import_from_holographic(
             except ValueError as e:
                 # 单条失败不中断导入，记录后继续
                 skipped += 1
-                logger.warning("导入失败，已跳过: %s", e)
+                logger.warning("导入失败，已跳过: {}", e)
 
         return {"imported": imported, "skipped": skipped, "total": total}
     finally:

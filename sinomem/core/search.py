@@ -1,5 +1,6 @@
 """记忆搜索层（关键词 + 语义 + 混合，RRF 融合）"""
 
+import contextlib
 import sqlite3
 
 from .logger import get_logger, timed
@@ -73,6 +74,7 @@ class SearchEngine:
         query: str,
         limit: int,
         embedding: list[float] | None = None,
+        commit: bool = True,
     ) -> list[dict]:
         """RRF（Reciprocal Rank Fusion）混合搜索
 
@@ -85,6 +87,7 @@ class SearchEngine:
             query: 搜索文本（embedding 不为 None 时可忽略）
             limit: 返回条数
             embedding: 预计算的查询向量（为 None 时实时编码）
+            commit: 是否立即提交访问计数
         """
         with timed(logger, "hybrid_rrf_search"):
             if not self._has_vec() or not self._embedder:
@@ -128,6 +131,7 @@ class SearchEngine:
             update_access(
                 self.conn,
                 [results_map[rid] for rid in sorted_ids if rid in results_map],
+                commit=commit,
             )
 
             return [
@@ -139,9 +143,17 @@ class SearchEngine:
     # ── 内部方法（不更新访问计数）──
 
     def _keyword_search_raw(
-        self, query: str, limit: int, update: bool = False
+        self,
+        query: str,
+        limit: int,
+        update: bool = False,
+        commit: bool = True,
     ) -> list[dict]:
-        """关键词搜索（使用 BM25 排序）"""
+        """关键词搜索（使用 BM25 排序）
+
+        Args:
+            commit: update 时是否立即提交访问计数（批量搜索传 False 统一提交）
+        """
         tokenized_query = tokenize_for_fts5(query)
 
         # 空查询（纯空白/纯特殊字符被过滤）直接返回空，避免 MATCH '' 语法错误
@@ -165,11 +177,11 @@ class SearchEngine:
                 (tokenized_query, limit),
             ).fetchall()
         except sqlite3.OperationalError:
-            logger.warning("FTS5 查询语法错误，返回空结果: %r", query)
+            logger.warning("FTS5 查询语法错误，返回空结果: {!r}", query)
             return []
 
         if update:
-            update_access(self.conn, rows)
+            update_access(self.conn, rows, commit=commit)
 
         # score 越大越相关，与 semantic 模式（1/(1+distance)）语义一致
         return [
@@ -186,6 +198,7 @@ class SearchEngine:
         limit: int = 5,
         update: bool = False,
         embedding: list[float] | None = None,
+        commit: bool = True,
     ) -> list[dict]:
         """语义搜索（不更新访问计数）
 
@@ -194,6 +207,7 @@ class SearchEngine:
             limit: 返回条数
             update: 是否更新访问计数
             embedding: 预计算的查询向量（为 None 时用 query 实时编码）
+            commit: update 时是否立即提交访问计数
         """
         if not self._has_vec() or not self._embedder:
             return []
@@ -217,7 +231,7 @@ class SearchEngine:
         ).fetchall()
 
         if update:
-            update_access(self.conn, rows)
+            update_access(self.conn, rows, commit=commit)
 
         return [
             _row_to_dict(row, score=round(1.0 / (1.0 + row["distance"]), 4))
@@ -227,11 +241,14 @@ class SearchEngine:
     def search_batch(
         self,
         queries: list[dict],
-    ) -> list[dict]:
+    ) -> list[list[dict]]:
         """批量搜索（语义查询一次 embed_batch 避免重复推理）
 
         Args:
             queries: [{"query": "...", "mode": "keyword", "limit": 5}, ...]
+
+        Returns:
+            结果列表，每个元素对应一个查询的结果列表（list[list[dict]]）
 
         每个 query 项的 mode 默认为 "keyword"，limit 默认为 5
         """
@@ -261,7 +278,8 @@ class SearchEngine:
             for j, idx in enumerate(semantic_indices):
                 idx_embedding[idx] = batch_embeddings[j]
 
-        # ── 2. 逐条执行 ──
+        # ── 2. 逐条执行（访问计数用 commit=False，末尾统一提交一次）──
+        has_vec = self._has_vec() and self._embedder is not None
         for i, q in enumerate(queries):
             query = q["query"]
             mode = q.get("mode", "keyword")
@@ -273,15 +291,57 @@ class SearchEngine:
                 if mode == "semantic":
                     results.append(
                         self._semantic_search_raw(
-                            query, limit, update=True, embedding=emb
+                            query,
+                            limit,
+                            update=True,
+                            embedding=emb,
+                            commit=False,
                         )
                     )
                 else:  # hybrid
                     results.append(
-                        self._hybrid_rrf_search(query, limit, embedding=emb)
+                        self._hybrid_rrf_search(
+                            query, limit, embedding=emb, commit=False
+                        )
                     )
-            else:
-                results.append(self.search(query, mode=mode, limit=limit))
+            elif mode == "semantic":
+                if has_vec:
+                    results.append(
+                        self._semantic_search_raw(
+                            query, limit, update=True, commit=False
+                        )
+                    )
+                else:
+                    # 无向量时降级为关键词搜索（与单条搜索语义一致）
+                    results.append(
+                        self._keyword_search_raw(
+                            query, limit, update=True, commit=False
+                        )
+                    )
+            elif mode == "hybrid":
+                if has_vec:
+                    results.append(
+                        self._hybrid_rrf_search(query, limit, commit=False)
+                    )
+                else:
+                    results.append(
+                        self._keyword_search_raw(
+                            query, limit, update=True, commit=False
+                        )
+                    )
+            else:  # keyword
+                results.append(
+                    self._keyword_search_raw(
+                        query, limit, update=True, commit=False
+                    )
+                )
 
-        logger.info("批量搜索完成: %d 个查询", len(queries))
+        # 统一提交访问计数更新（避免每个查询单独 commit 的写放大）；
+        # 与并发写操作冲突时静默放弃本次计数提交
+        try:
+            self.conn.commit()
+        except sqlite3.OperationalError:
+            with contextlib.suppress(sqlite3.Error):
+                self.conn.rollback()
+        logger.info("批量搜索完成: {} 个查询", len(queries))
         return results

@@ -19,14 +19,31 @@ def _row_to_dict(row, score: float | None = None) -> dict:
     return d
 
 
-def update_access(conn: sqlite3.Connection, rows: list) -> None:
-    """批量更新访问计数（executemany，单次 commit）"""
+def update_access(
+    conn: sqlite3.Connection, rows: list, commit: bool = True
+) -> None:
+    """批量更新访问计数（executemany，可延迟提交）
+
+    Args:
+        commit: False 时累积不提交，由调用方统一 commit（用于批量搜索，
+            避免每个查询单独提交的写放大）
+
+    读路径上的访问计数是尽力而为的元数据：与并发写操作冲突时
+    静默跳过（回滚残留事务），不影响搜索主流程。
+    """
     if not rows:
         return
-    ids = [(row["id"],) for row in rows]
-    conn.executemany(
-        "UPDATE memories SET access_count = access_count + 1, "
-        "last_accessed = CURRENT_TIMESTAMP WHERE id = ?",
-        ids,
-    )
-    conn.commit()
+    try:
+        ids = [(row["id"],) for row in rows]
+        conn.executemany(
+            "UPDATE memories SET access_count = access_count + 1, "
+            "last_accessed = CURRENT_TIMESTAMP WHERE id = ?",
+            ids,
+        )
+        if commit:
+            conn.commit()
+    except sqlite3.OperationalError:
+        # 并发写锁冲突（如与 store/delete 同时发生）：回滚半提交事务，
+        # 静默跳过本次计数更新
+        with contextlib.suppress(sqlite3.Error):
+            conn.rollback()

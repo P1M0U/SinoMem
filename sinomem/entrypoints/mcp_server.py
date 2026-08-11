@@ -10,13 +10,14 @@ from ..core.engine import MemoryEngine, create_engine
 
 _engine: MemoryEngine | None = None
 
-# fastmcp 对同步工具默认在线程池执行，全部工具共享同一 SQLite 连接，
-# 用 RLock 串行化访问，避免并发读写竞态
+# fastmcp 对同步工具默认在线程池执行，全部工具共享同一 SQLite 连接。
+# 写工具用 RLock 串行化（SQLite 单写者互斥）；读工具不加锁以支持
+# WAL 并发读，读路径上的访问计数写冲突由 update_access 容错兜底。
 _ENGINE_LOCK = threading.RLock()
 
 
 def engine_safe(func):
-    """装饰器：串行化 MCP 工具对共享引擎/连接的访问"""
+    """装饰器：串行化 MCP 写工具对共享引擎/连接的访问"""
 
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
@@ -85,7 +86,6 @@ def store_memory(
 
 
 @mcp.tool()
-@engine_safe
 def search_memory(
     query: str, mode: str = "keyword", limit: int = 5
 ) -> list[dict]:
@@ -111,7 +111,6 @@ def search_memory(
 
 
 @mcp.tool()
-@engine_safe
 def get_memory(memory_id: int) -> dict | None:
     """获取指定 id 的记忆
 
@@ -217,7 +216,6 @@ def store_memories_batch(
 
 
 @mcp.tool()
-@engine_safe
 def search_memories_batch(
     queries: list[dict],
 ) -> list[list[dict]]:
@@ -225,13 +223,15 @@ def search_memories_batch(
 
     Args:
         queries: [{"query": "...", "mode": "keyword", "limit": 5}, ...]
+
+    Returns:
+        嵌套列表：每个元素对应一个查询的结果列表（list[list[dict]]）
     """
     engine = _get_engine()
     return engine.search_batch(queries)
 
 
 @mcp.tool()
-@engine_safe
 def list_memories(category: str | None = None, limit: int = 20) -> list[dict]:
     """列出记忆（按重要性排序，排除过期）
 
@@ -244,7 +244,6 @@ def list_memories(category: str | None = None, limit: int = 20) -> list[dict]:
 
 
 @mcp.tool()
-@engine_safe
 def memory_stats() -> dict:
     """查看记忆统计信息（含过期记忆数）"""
     engine = _get_engine()
@@ -261,8 +260,14 @@ def vacuum_memory() -> dict:
 
 @mcp.tool()
 @engine_safe
-def delete_all_memories() -> dict:
-    """清空所有记忆（⚠️ 不可逆操作）"""
+def delete_all_memories(confirm: bool = False) -> dict:
+    """清空所有记忆（⚠️ 不可逆操作）
+
+    Args:
+        confirm: 必须显式传 True 才会执行，防止 Agent 误调用清空全部记忆
+    """
+    if not confirm:
+        raise ValueError("清空所有记忆为不可逆操作，请显式传入 confirm=True")
     engine = _get_engine()
     count = engine.delete_all()
     return {"status": "ok", "deleted": count}

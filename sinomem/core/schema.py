@@ -81,9 +81,8 @@ def run_migrations(conn) -> None:
 
 def _migrate_v1(conn) -> None:
     """v0 → v1: 新增 importance 和 expires_at 字段（如果不存在则添加）"""
-    import logging
+    from loguru import logger
 
-    logger = logging.getLogger("sinomem")
     logger.info("运行数据库迁移 v0 → v1...")
 
     # 检查重要性字段

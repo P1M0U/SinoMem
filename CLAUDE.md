@@ -20,4 +20,5 @@
 - 全栈的API必须符合RESTful API风格
 - 必须符合模块化设计
 - 添加简要的函数级的注释
+- 日志打印库优先使用loguru
 - .py 的代码提交前必须进行 ruff check 和ruff format 的检查并要求检查通过

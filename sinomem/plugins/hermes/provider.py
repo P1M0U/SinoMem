@@ -10,10 +10,11 @@
 import contextvars
 import importlib
 import importlib.util  # 显式导入子模块
-import logging
 import os
 from pathlib import Path
 from typing import Any
+
+from loguru import logger
 
 # 防递归写入标记（ContextVar 替代 threading.current_thread() 属性）
 _writing_flag: contextvars.ContextVar[bool] = contextvars.ContextVar(
@@ -66,7 +67,7 @@ class SinoMemProvider(MemoryProvider):
         self._hermes_home = None
         self._agent_context = None
         self._skip_writes = False  # cron/subagent 不镜像写入
-        self._logger = logging.getLogger("hermes.memory.sinomem")
+        self._logger = logger.bind(name="hermes.memory.sinomem")
 
     def is_available(self) -> bool:
         """检查 sinomem 是否可用"""
@@ -76,7 +77,7 @@ class SinoMemProvider(MemoryProvider):
                 return False
             return True
         except Exception as e:
-            self._logger.warning(f"is_available 检查异常: {e}")
+            self._logger.warning("is_available 检查异常: {}", e)
             return False
 
     def get_config_schema(self) -> list[dict]:
@@ -108,11 +109,13 @@ class SinoMemProvider(MemoryProvider):
         try:
             self._engine = _create_engine(db_path)
             self._logger.info(
-                f"SinoMem 初始化成功 (session={session_id}, "
-                f"context={self._agent_context}, skip_writes={self._skip_writes})"
+                "SinoMem 初始化成功 (session={}, context={}, skip_writes={})",
+                session_id,
+                self._agent_context,
+                self._skip_writes,
             )
         except Exception as e:
-            self._logger.error(f"初始化失败: {e}")
+            self._logger.error("初始化失败: {}", e)
             raise
 
     def get_tool_schemas(self) -> list[dict[str, Any]]:
@@ -257,7 +260,7 @@ class SinoMemProvider(MemoryProvider):
                 return tool_error(f"未知工具: {tool_name}")
 
         except Exception as e:
-            self._logger.error(f"工具调用失败 [{tool_name}]: {e}")
+            self._logger.error("工具调用失败 [{}]: {}", tool_name, e)
             return tool_error(str(e))
 
     def system_prompt_block(self) -> str:
@@ -299,7 +302,7 @@ class SinoMemProvider(MemoryProvider):
 
         try:
             _writing_flag.set(True)
-            self._logger.debug(f"on_memory_write: {action} {target}")
+            self._logger.debug("on_memory_write: {} {}", action, target)
 
             if action in ("add", "replace") and content:
                 category = "general"
@@ -316,10 +319,10 @@ class SinoMemProvider(MemoryProvider):
                     category=category,
                     tags=tags if tags else ["hermes-sync"],
                 )
-                self._logger.debug(f"同步成功: {content[:50]}...")
+                self._logger.debug("同步成功: {}...", content[:50])
 
         except Exception as e:
-            self._logger.warning(f"on_memory_write 同步失败: {e}")
+            self._logger.warning("on_memory_write 同步失败: {}", e)
         finally:
             _writing_flag.set(False)
 
@@ -338,7 +341,7 @@ class SinoMemProvider(MemoryProvider):
                 self._engine.close()
                 self._logger.info("SinoMem 已关闭")
             except Exception as e:
-                self._logger.warning(f"关闭异常: {e}")
+                self._logger.warning("关闭异常: {}", e)
 
 
 # ---------------------------------------------------------------------------
