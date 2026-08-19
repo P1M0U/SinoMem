@@ -57,7 +57,7 @@ coverage.json
 logs/
 
 # Claude Code 本地设置（install_claude_code.sh 生成，含本机路径）
-.claude/settings.local.json
+.claude/
 
 # 模型文件兜底（散落在 models/ 之外时）
 *.onnx
