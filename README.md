@@ -2,20 +2,65 @@
 
 [English](README_EN.md) | 中文
 
-![Version](https://img.shields.io/badge/version-v0.7.2-blue)
-![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
-![SQLite](https://img.shields.io/badge/SQLite-FTS5-003B57?logo=sqlite&logoColor=white)
-![jieba](https://img.shields.io/badge/jieba-中文分词-blue)
-![ONNX](https://img.shields.io/badge/ONNX-推理-FF6F00?logo=onnx&logoColor=white)
-![sqlite-vec](https://img.shields.io/badge/sqlite--vec-向量搜索-purple)
-![MCP](https://img.shields.io/badge/MCP-Server-green)
-![uv](https://img.shields.io/badge/uv-包管理-orange)
-![License](https://img.shields.io/badge/License-Apache%202.0-blue)
+<p align="center">
+  <img src="https://img.shields.io/badge/version-v0.7.2-blue" alt="Version">
+  <img src="https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/SQLite-FTS5-003B57?logo=sqlite&logoColor=white" alt="SQLite">
+  <img src="https://img.shields.io/badge/jieba-中文分词-blue" alt="jieba">
+  <img src="https://img.shields.io/badge/ONNX-推理-FF6F00?logo=onnx&logoColor=white" alt="ONNX">
+  <img src="https://img.shields.io/badge/sqlite--vec-向量搜索-purple" alt="sqlite-vec">
+  <img src="https://img.shields.io/badge/MCP-Server-green" alt="MCP">
+  <img src="https://img.shields.io/badge/uv-包管理-orange" alt="uv">
+  <img src="https://img.shields.io/badge/License-Apache%202.0-blue" alt="License">
+  <img src="https://gitee.com/P1M0U/SinoMem/badge/star.svg" alt="Gitee Stars">
+  <img src="https://gitee.com/P1M0U/SinoMem/badge/fork.svg" alt="Gitee Forks">
+</p>
 
 > 让你的 AI Agent 拥有永不遗忘的长期记忆。
 > 一行命令接入，零 API 费用，数据 100% 本地存储。
 
 轻量级中文友好的 Agent 记忆增强系统，支持 SQLite + FTS5 + jieba 分词 + 本地 ONNX 向量搜索，零 API 调用。可通过 MCP 协议接入 Claude Code、Cursor、Cline、Hermes 等任意 Agent。
+
+⭐ 如果 SinoMem 对你有帮助，欢迎点个 Star，让更多开发者看到它！
+
+## 📑 目录
+
+- [效果预览](#-效果预览)
+- [快速体验（30 秒上手）](#快速体验30-秒上手)
+- [适用场景](#适用场景)
+- [为什么选择 SinoMem？](#为什么选择-sinomem)
+- [核心特性](#核心特性)
+- [项目结构](#项目结构)
+- [安装指南](#安装指南)
+- [下载嵌入模型（可选，用于语义搜索）](#下载嵌入模型可选用于语义搜索)
+- [手动配置 Hermes MCP](#手动配置-hermes-mcp)
+- [多 Agent 自动记忆同步（插件系统）](#多-agent-自动记忆同步插件系统)
+- [使用方法](#使用方法)
+- [搜索模式](#搜索模式)
+- [卸载](#卸载)
+- [FAQ 常见问题](#faq-常见问题)
+- [Roadmap 开发路线](#roadmap-开发路线)
+- [贡献指南](#贡献指南)
+- [License](#license)
+- [联系作者](#联系作者)
+
+---
+
+## 🖼 效果预览
+
+> **📌 此处建议存放演示 GIF 与架构简图**，放置路径：`assets/` 目录（如 `assets/demo.gif`、`assets/architecture.png`）。
+
+```
+┌────────────────────────────────────────────┐
+│  assets/                                   │
+│  ├── demo.gif          ← 演示：store/search │
+│  └── architecture.png  ← 架构简图           │
+└────────────────────────────────────────────┘
+```
+
+*（预览素材准备中，欢迎通过 PR 贡献演示 GIF / 架构图。）*
+
+---
 
 ## 快速体验（30 秒上手）
 
@@ -35,6 +80,8 @@ sinomem search "Docker"
 
 > 安装到 `~/.local/share/sinomem/`，不会污染 Desktop 目录。安装后可直接使用 `sinomem` 命令。
 
+---
+
 ## 适用场景
 
 - 🤖 用 Claude Code / Cursor / Cline / Hermes 等 AI 编程助手的开发者
@@ -42,6 +89,8 @@ sinomem search "Docker"
 - 🔒 数据不能上云的合规要求（100% 本地 SQLite 存储）
 - 💰 不想为 Embedding API 付费的团队（本地 ONNX 推理）
 - 🔗 多个 AI 工具之间共享同一份长期记忆
+
+---
 
 ## 为什么选择 SinoMem？
 
@@ -55,7 +104,9 @@ sinomem search "Docker"
 | 数据库可备份 | ✅ 单文件复制即可 | ❌ | ❌ |
 | 费用 | 💰 零 API 费用 | 💰💸 按 token 计费 | 💰 零 |
 
-## 特性
+---
+
+## 核心特性
 
 - **中文 FTS5 搜索** — jieba 分词 + SQLite FTS5，写入和查询用同一套分词器，token 完全对齐
 - **语义搜索** — 本地 ONNX 嵌入模型（~24MB 起），可选安装，支持双模自动识别
@@ -96,118 +147,85 @@ install.sh                # 一键安装脚本
 
 ---
 
-## 一键安装（给智能体的提示词）
+## 安装指南
 
-复制以下内容发给你的 AI Agent，它会自动完成安装。
+> **💡 本部分是给人类读者的一键安装；** 如果你需要把安装指令交给 AI Agent 自动执行，请使用独立文档 [AGENT_INSTALL.md](AGENT_INSTALL.md)（完整分步指南）。
 
-> **💡 如果你使用的是 Hermes Agent**，推荐通过 **Memory Provider 插件方式**安装，可获得更好的集成体验（自动同步、进程内调用、工具去重）。详见 [Hermes Memory Provider 适配器安装指南](sinomem-hermes-adapter-guide.md)。
+### 一键脚本（推荐）
 
-### 方式一：一键脚本（推荐）
+```bash
+# 国内用户（Gitee）
+curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/install.sh | bash
 
-```
-请帮我安装 SinoMem 记忆系统，执行以下命令：
+# GitHub 用户
+curl -fsSL https://github.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --mirror github
 
+# 含语义搜索的完整安装
 curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --with-embedding
-
-安装后执行 source ~/.bashrc（或 ~/.zshrc）刷新环境变量，然后运行 sinomem --help 验证 CLI 命令可用。
-告诉我结果。
 ```
 
-### 方式二：从 Gitee 安装（国内更快）
+> 如需手动安装，可克隆仓库后执行 `python3 -m venv .venv && .venv/bin/pip install -e .`。仓库默认安装到 `~/.local/share/sinomem/`。安装脚本自动将 `.venv/bin` 加入 PATH，终端刷新后即可直接使用 `sinomem` 命令。
 
-```
-请帮我安装 SinoMem 记忆系统，步骤如下：
+> **💡 如果你使用的是 Hermes Agent**，推荐通过 **Memory Provider 插件方式**安装，可获得更好的集成体验（自动同步、进程内调用、工具去重）。详见 [Hermes Memory Provider 适配器安装指南](HERMES_ADAPTER.md)。
 
-1. 克隆仓库并创建虚拟环境（使用 Gitee 国内镜像）
-   git clone --depth 1 https://gitee.com/P1M0U/SinoMem.git ~/.local/share/sinomem
-   cd ~/.local/share/sinomem
-   python3 -m venv .venv
+> **🤖 给智能体的完整安装指引**（分步执行版）见 [AGENT_INSTALL.md](AGENT_INSTALL.md)。
 
-2. 配置 pip 清华镜像源并安装（国内下载更快）
-   .venv/bin/pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
-   .venv/bin/pip install -e .
+---
 
-3. 验证安装是否成功
-   .venv/bin/python -c "from sinomem.core.engine import MemoryEngine; print('ok')"
+## 下载嵌入模型（可选，用于语义搜索）
 
-4. 将 sinomem CLI 加入 PATH，追加到 ~/.bashrc 或 ~/.zshrc：
-   export SINOMEM_HOME="$HOME/.local/share/sinomem"
-   export PATH="$SINOMEM_HOME/.venv/bin:$PATH"
-   export HF_ENDPOINT="https://hf-mirror.com"   # HuggingFace 国内镜像（用于下载模型）
+本项目支持两种嵌入模型，根据你的场景选择其中一个下载即可（系统会自动识别模型类型）：
 
-5. 询问用户是否需要安装嵌入模型（用于语义搜索），给出以下选项让用户选择：
-   — A. 不安装（默认）— 跳过此步，语义搜索自动降级为关键词搜索
-   — B. 安装 embedding 依赖（onnxruntime + sqlite-vec，~200MB）
+| 模型 | 大小 | 维度 | 语言 | 适用场景 |
+|------|------|------|------|----------|
+| **paraphrase-multilingual-MiniLM-L12-v2** | ~113MB | 384 | 50+ 语言 | 多语言混用、中英夹杂内容多 |
+| **bge-small-zh-v1.5** | ~24MB | 512 | 中文优化 | 纯中文为主、追求更小体积和更好中文效果 |
 
-6. 如果用户选择 B，执行 .venv/bin/pip install -e ".[embedding]" 安装依赖。
-   然后询问是否需要自动下载 ONNX 模型（约 24MB），如果需要则运行：
-   export HF_ENDPOINT="https://hf-mirror.com"
-   .venv/bin/pip install huggingface-hub
-   .venv/bin/python -c "from sinomem.core.embedder import ensure_model; print('ok' if ensure_model() else 'download failed')"
+```bash
+# 创建模型目录
+mkdir -p models/embedding/onnx
 
-7. 询问用户选择安装方式，给出以下选项：
-   — A. Hermes Memory Provider 插件方式（推荐）— 执行 `ln -s ~/.local/share/sinomem/hermes_plugin/ ~/.hermes/plugins/sinomem`
-   — B. MCP Server 方式 — 继续执行以下步骤 8-9
+# 国内用户：设置 HuggingFace 镜像加速（hf-mirror.com 稳定可靠）
+export HF_ENDPOINT="https://hf-mirror.com"
 
-8. （仅当用户选择 MCP Server 方式时）把 MCP Server 配置写入 ~/.hermes/config.yaml 的 mcp_servers 段：
-   sinomem:
-     args: []
-     command: ~/.local/share/sinomem/.venv/bin/python -m sinomem.entrypoints.mcp_server
+# 安装下载工具（国内用户建议使用清华 pip 镜像）
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple huggingface-hub
 
-9. 执行 source ~/.bashrc（或 ~/.zshrc）刷新环境变量，然后运行 sinomem --help 验证 CLI 命令可用。
+# ─── 模型 A：paraphrase-multilingual-MiniLM-L12-v2（多语言，~113MB）───
+python -c "
+from huggingface_hub import hf_hub_download
+hf_hub_download('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', 'onnx/model_quantized.onnx', local_dir='models/embedding')
+hf_hub_download('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', 'tokenizer.json', local_dir='models/embedding')
+"
 
-完成后告诉我安装结果。
+# ─── 模型 B：bge-small-zh-v1.5（中文优化，~24MB）───
+python -c "
+from huggingface_hub import hf_hub_download
+hf_hub_download('Xenova/bge-small-zh-v1.5', 'onnx/model_quantized.onnx', local_dir='models/embedding')
+hf_hub_download('Xenova/bge-small-zh-v1.5', 'tokenizer.json', local_dir='models/embedding')
+"
 ```
 
-### 方式三：从 GitHub 安装
+> **💡 镜像说明**：
+> - `HF_ENDPOINT=https://hf-mirror.com` — HuggingFace 国内镜像（稳定可靠）
+> - pip `-i https://pypi.tuna.tsinghua.edu.cn/simple` — 清华大学 PyPI 镜像
+> - 国外用户可省略上述镜像设置，直接使用官方源
 
+不下载模型也能使用，语义搜索会自动降级为关键词搜索。
+
+---
+
+## 手动配置 Hermes MCP
+
+在 `~/.hermes/config.yaml` 的 `mcp_servers:` 下添加：
+
+```yaml
+  sinomem:
+    args: []
+    command: ~/.local/share/sinomem/.venv/bin/python -m sinomem.entrypoints.mcp_server
 ```
-请帮我安装 SinoMem 记忆系统，步骤如下：
 
-1. 克隆仓库并创建虚拟环境
-   git clone --depth 1 https://github.com/P1M0U/SinoMem.git ~/.local/share/sinomem
-   cd ~/.local/share/sinomem
-   python3 -m venv .venv
-
-2. 配置 pip 镜像源并安装（国内用户推荐清华镜像，国外用户可跳过此步）
-   # 国内用户执行:
-   .venv/bin/pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
-   # 国外用户直接安装:
-   .venv/bin/pip install -e .
-
-3. 验证安装是否成功
-   .venv/bin/python -c "from sinomem.core.engine import MemoryEngine; print('ok')"
-
-4. 将 sinomem CLI 加入 PATH，追加到 ~/.bashrc 或 ~/.zshrc：
-   export SINOMEM_HOME="$HOME/.local/share/sinomem"
-   export PATH="$SINOMEM_HOME/.venv/bin:$PATH"
-   # 国内用户还需设置 HuggingFace 镜像：
-   export HF_ENDPOINT="https://hf-mirror.com"
-
-5. 询问用户是否需要安装嵌入模型（用于语义搜索），给出以下选项让用户选择：
-   — A. 不安装（默认）— 跳过此步，语义搜索自动降级为关键词搜索
-   — B. 安装 embedding 依赖（onnxruntime + sqlite-vec，~200MB）
-
-6. 如果用户选择 B，执行 .venv/bin/pip install -e ".[embedding]" 安装依赖。
-   然后询问是否需要自动下载 ONNX 模型（约 24MB），如果需要则运行：
-   # 国内用户先设置镜像：
-   export HF_ENDPOINT="https://hf-mirror.com"
-   .venv/bin/pip install huggingface-hub
-   .venv/bin/python -c "from sinomem.core.embedder import ensure_model; print('ok' if ensure_model() else 'download failed')"
-
-7. 询问用户选择安装方式，给出以下选项：
-   — A. Hermes Memory Provider 插件方式（推荐）— 执行 `ln -s ~/.local/share/sinomem/hermes_plugin/ ~/.hermes/plugins/sinomem`
-   — B. MCP Server 方式 — 继续执行以下步骤 8-9
-
-8. （仅当用户选择 MCP Server 方式时）把 MCP Server 配置写入 ~/.hermes/config.yaml 的 mcp_servers 段：
-   sinomem:
-     args: []
-     command: ~/.local/share/sinomem/.venv/bin/python -m sinomem.entrypoints.mcp_server
-
-9. 执行 source ~/.bashrc（或 ~/.zshrc）刷新环境变量，然后运行 sinomem --help 验证 CLI 命令可用。
-
-完成后告诉我安装结果。
-```
+重启 Hermes 后生效。
 
 ---
 
@@ -256,106 +274,6 @@ plugin = create_plugin()
 plugin.auto_store("用户喜欢飞书")
 results = plugin.auto_search("协作工具")
 ```
-
----
-
-## 手动安装
-
-```bash
-# 国内用户（Gitee）
-curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/install.sh | bash
-
-# GitHub 用户
-curl -fsSL https://github.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --mirror github
-
-# 含语义搜索的完整安装
-curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --with-embedding
-```
-
-> 如需手动安装，可克隆仓库后执行 `python3 -m venv .venv && .venv/bin/pip install -e .`。仓库默认安装到 `~/.local/share/sinomem/`。安装脚本自动将 `.venv/bin` 加入 PATH，终端刷新后即可直接使用 `sinomem` 命令。
-
-## 卸载
-
-提供一键卸载脚本，可干净移除 SinoMem 及其所有相关配置：
-
-```bash
-# 国内用户（Gitee）
-curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/uninstall.sh | bash
-
-# GitHub 用户
-curl -fsSL https://github.com/P1M0U/SinoMem/raw/main/uninstall.sh | bash
-
-# 或本地执行（克隆仓库后）
-bash uninstall.sh
-```
-
-**卸载内容：**
-
-| 步骤 | 清理项 | 说明 |
-|------|--------|------|
-| pip 包 | sinomem | 系统 pip + Hermes venv 双重卸载 |
-| 安装目录 | `~/.local/share/sinomem/` | 删除全部项目文件 |
-| 环境变量 | SINOMEM_HOME / PATH / HF_ENDPOINT | 从 `.bashrc` / `.zshrc` / `.profile` 中移除 |
-| Hermes 插件 | `~/.hermes/plugins/sinomem` | 移除符号链接 |
-| 记忆数据库 | `~/.sinomem/memory.db` | **交互式询问**，可选择保留或删除 |
-| Hermes 依赖 | jieba / tokenizers | 卸载 install.sh 安装到 Hermes venv 的依赖 |
-| Claude Code hooks | `settings.local.json` | 检测并提示清理（卸载后残留 hooks 会报错） |
-| jieba 缓存 | `~/.cache/jieba` | 询问是否清理 |
-
-> 💡 卸载记忆数据库前会显示记忆条数和文件大小，并需要二次确认。重新安装后可继续使用保留的数据库。
-
-## 下载嵌入模型（可选，用于语义搜索）
-
-本项目支持两种嵌入模型，根据你的场景选择其中一个下载即可（系统会自动识别模型类型）：
-
-| 模型 | 大小 | 维度 | 语言 | 适用场景 |
-|------|------|------|------|----------|
-| **paraphrase-multilingual-MiniLM-L12-v2** | ~113MB | 384 | 50+ 语言 | 多语言混用、中英夹杂内容多 |
-| **bge-small-zh-v1.5** | ~24MB | 512 | 中文优化 | 纯中文为主、追求更小体积和更好中文效果 |
-
-```bash
-# 创建模型目录
-mkdir -p models/embedding/onnx
-
-# 国内用户：设置 HuggingFace 镜像加速（hf-mirror.com 稳定可靠）
-export HF_ENDPOINT="https://hf-mirror.com"
-
-# 安装下载工具（国内用户建议使用清华 pip 镜像）
-pip install -i https://pypi.tuna.tsinghua.edu.cn/simple huggingface-hub
-
-# ─── 模型 A：paraphrase-multilingual-MiniLM-L12-v2（多语言，~113MB）───
-python -c "
-from huggingface_hub import hf_hub_download
-hf_hub_download('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', 'onnx/model_quantized.onnx', local_dir='models/embedding')
-hf_hub_download('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', 'tokenizer.json', local_dir='models/embedding')
-"
-
-# ─── 模型 B：bge-small-zh-v1.5（中文优化，~24MB）───
-python -c "
-from huggingface_hub import hf_hub_download
-hf_hub_download('Xenova/bge-small-zh-v1.5', 'onnx/model_quantized.onnx', local_dir='models/embedding')
-hf_hub_download('Xenova/bge-small-zh-v1.5', 'tokenizer.json', local_dir='models/embedding')
-"
-```
-
-> **💡 镜像说明**：
-> - `HF_ENDPOINT=https://hf-mirror.com` — HuggingFace 国内镜像（稳定可靠）
-> - pip `-i https://pypi.tuna.tsinghua.edu.cn/simple` — 清华大学 PyPI 镜像
-> - 国外用户可省略上述镜像设置，直接使用官方源
-
-不下载模型也能使用，语义搜索会自动降级为关键词搜索。
-
-## 手动配置 Hermes MCP
-
-在 `~/.hermes/config.yaml` 的 `mcp_servers:` 下添加：
-
-```yaml
-  sinomem:
-    args: []
-    command: ~/.local/share/sinomem/.venv/bin/python -m sinomem.entrypoints.mcp_server
-```
-
-重启 Hermes 后生效。
 
 ---
 
@@ -457,6 +375,91 @@ sinomem vacuum
 | `keyword` | FTS5 关键词匹配 | 精确查找，如搜"飞书" |
 | `semantic` | 向量语义相似度 | 模糊查找，如搜"怎么传文件" |
 | `hybrid` | 关键词 + 语义加权 | 通用场景，兼顾精确和模糊 |
+
+---
+
+## 卸载
+
+提供一键卸载脚本，可干净移除 SinoMem 及其所有相关配置：
+
+```bash
+# 国内用户（Gitee）
+curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/uninstall.sh | bash
+
+# GitHub 用户
+curl -fsSL https://github.com/P1M0U/SinoMem/raw/main/uninstall.sh | bash
+
+# 或本地执行（克隆仓库后）
+bash uninstall.sh
+```
+
+**卸载内容：**
+
+| 步骤 | 清理项 | 说明 |
+|------|--------|------|
+| pip 包 | sinomem | 系统 pip + Hermes venv 双重卸载 |
+| 安装目录 | `~/.local/share/sinomem/` | 删除全部项目文件 |
+| 环境变量 | SINOMEM_HOME / PATH / HF_ENDPOINT | 从 `.bashrc` / `.zshrc` / `.profile` 中移除 |
+| Hermes 插件 | `~/.hermes/plugins/sinomem` | 移除符号链接 |
+| 记忆数据库 | `~/.sinomem/memory.db` | **交互式询问**，可选择保留或删除 |
+| Hermes 依赖 | jieba / tokenizers | 卸载 install.sh 安装到 Hermes venv 的依赖 |
+| Claude Code hooks | `settings.local.json` | 检测并提示清理（卸载后残留 hooks 会报错） |
+| jieba 缓存 | `~/.cache/jieba` | 询问是否清理 |
+
+> 💡 卸载记忆数据库前会显示记忆条数和文件大小，并需要二次确认。重新安装后可继续使用保留的数据库。
+
+---
+
+## FAQ 常见问题
+
+### Q1：不下载嵌入模型，还能用语义搜索吗？
+
+可以。不下载模型时语义搜索会自动降级为关键词搜索，功能不受影响。需要语义搜索时再下载模型（约 24MB 起）。
+
+### Q2：如何让 Hermes 使用 SinoMem 作为 Memory Provider？
+
+推荐使用 **Hermes Memory Provider 插件方式**安装，详见 [Hermes Memory Provider 适配器安装指南](HERMES_ADAPTER.md)。也可以将 SinoMem 配置为 MCP Server（见[手动配置 Hermes MCP](#手动配置-hermes-mcp)）。
+
+### Q3：多个 Agent 可以共享同一份记忆吗？
+
+可以。SinoMem 使用 SQLite 单文件存储（WAL 模式），支持多 Agent 并发访问（check_same_thread=False），一份 `.db` 文件可在 Claude Code、Cursor、Cline、Hermes 之间共享。
+
+### Q4：如何迁移其他记忆系统的数据？
+
+支持从 holographic memory 导入（`sinomem import`），并为已有记忆补充向量嵌入（`sinomem migrate`）。详见[数据迁移](#数据迁移)。
+
+### Q5：SinoMem 会调用任何云端 API 吗？
+
+不会。数据 100% 本地存储，嵌入推理使用本地 ONNX 模型，零 API 调用、零费用。
+
+---
+
+## Roadmap 开发路线
+
+- [x] SQLite + FTS5 中文全文搜索（jieba 分词）
+- [x] 本地 ONNX 语义搜索（可选安装，双模自动识别）
+- [x] 混合搜索（RRF 倒数排名融合）
+- [x] MCP Server（14 个工具）
+- [x] 多 Agent 自动同步插件（Claude Code / LangChain / Hermes）
+- [x] 一键安装脚本 + 一键卸载脚本
+- [ ] CrewAI / AutoGen 插件完善（当前为 WIP）
+- [ ] 效果演示 GIF / 架构图补充（`assets/`）
+- [ ] 更多嵌入模型支持
+- [ ] 记忆可视化面板
+
+---
+
+## 贡献指南
+
+欢迎参与 SinoMem 的开发！无论是提交 Bug、优化文档还是新增功能，都欢迎你的参与。
+
+- 🐛 发现 Bug → 提交 [Issue](https://gitee.com/P1M0U/SinoMem/issues)
+- ✨ 新功能 / 改进 → 提交 [PR](https://gitee.com/P1M0U/SinoMem/pulls)
+- 📝 文档优化 / 演示素材 → 直接提交 PR（GIF 等素材建议放入 `assets/`）
+
+**开发约定**：请保持模块化设计、代码高内聚低耦合；`.py` 文件提交前执行 `ruff check` 和 `ruff format` 并保证通过；提交信息遵循 Conventional Commits 规范。
+
+---
 
 ## License
 

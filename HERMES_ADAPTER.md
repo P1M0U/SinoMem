@@ -1,14 +1,30 @@
 # SinoMem × Hermes Memory Provider 适配器安装指南
 
+## 📑 目录
+
+- [概述](#概述)
+- [前置条件](#前置条件)
+- [安装步骤](#安装步骤)
+- [验证安装](#验证安装)
+- [常见问题与避坑指南](#常见问题与避坑指南)
+- [文件清单](#文件清单)
+- [卸载方法](#卸载方法)
+- [技术细节](#技术细节)
+- [更新日志](#更新日志)
+
+---
+
 ## 概述
 
 本指南介绍如何将 SinoMem 安装为 Hermes 的 Memory Provider，实现：
+
 - 内置 `memory` 工具写入自动同步到 SinoMem 数据库
 - jieba 中文分词 + FTS5 全文搜索
 - ONNX 本地语义向量搜索（可选）
 - 三种搜索模式：keyword / semantic / hybrid
 
 **架构特点：**
+
 - 只修改 Hermes 侧代码，不需要改动 SinoMem 源码
 - 适配器通过 Python 直接调用 SinoMem API（不走 MCP 协议）
 - 两边共享同一个 SQLite 数据库（WAL 模式，支持并发访问）
@@ -44,11 +60,10 @@
 ```
 
 **为什么需要安装 sinomem 本身？**
+
 - 适配器从 `sinomem.plugins.hermes.provider` 导入核心实现
 - 仅安装 jieba + tokenizers 不够，`is_available()` 中的 `find_spec("sinomem")` 会返回 None
 - 通过 `pip install -e` 安装后，`import sinomem` 才能在 Hermes venv 中正常工作
-
----
 
 ### 步骤 2：链接适配器插件
 
@@ -60,8 +75,6 @@ ln -s ~/.local/share/sinomem/hermes_plugin/ ~/.hermes/plugins/sinomem
 
 > 使用符号链接而非复制：`git pull` 更新项目后插件自动同步，无需再次操作。
 
----
-
 ### 步骤 3：修改 Hermes 配置
 
 编辑 `~/.hermes/config.yaml`，修改 memory 部分：
@@ -71,8 +84,6 @@ memory:
   provider: sinomem  # 从 holographic 改为 sinomem
 ```
 
----
-
 ### 步骤 4：删除旧的 holographic 插件（可选）
 
 ```bash
@@ -80,8 +91,6 @@ rm -rf ~/.hermes/hermes-agent/plugins/memory/holographic/
 ```
 
 **注意：** 只能有一个外部 memory provider，切换后 holographic 不会再加载。
-
----
 
 ### 步骤 5：重启 Hermes
 
@@ -132,11 +141,12 @@ sqlite3 ~/.sinomem/memory.db "SELECT * FROM memories ORDER BY id DESC LIMIT 1;"
 
 ---
 
-## ⚠️ 常见问题与避坑指南
+## 常见问题与避坑指南
 
 ### 问题 1：Provider 加载失败
 
 **症状：**
+
 ```
 Memory provider 'holographic' loaded (fallback)
 ```
@@ -144,17 +154,17 @@ Memory provider 'holographic' loaded (fallback)
 **原因：** sinomem 未安装到 Hermes venv
 
 **解决：**
+
 ```bash
 ~/.hermes/hermes-agent/venv/bin/python -m pip install --upgrade pip
 ~/.hermes/hermes-agent/venv/bin/python -m pip install jieba tokenizers
 ~/.hermes/hermes-agent/venv/bin/python -m pip install -e ~/.local/share/sinomem
 ```
 
----
-
 ### 问题 2：ImportError: No module named 'sinomem'
 
 **症状：**
+
 ```
 Failed to load provider: No module named 'sinomem'
 ```
@@ -167,11 +177,10 @@ Failed to load provider: No module named 'sinomem'
 ~/.hermes/hermes-agent/venv/bin/python -m pip install -e ~/.local/share/sinomem
 ```
 
----
-
 ### 问题 3：数据库锁死（database is locked）
 
 **症状：**
+
 ```
 sqlite3.OperationalError: database is locked
 ```
@@ -186,23 +195,21 @@ sqlite3 ~/.sinomem/memory.db "PRAGMA journal_mode=WAL;"
 
 SinoMem 默认已配置 WAL。
 
----
-
 ### 问题 4：on_memory_write 未触发
 
 **症状：** 内置 memory 工具写入后，SinoMem 数据库中找不到对应记录
 
 **原因：**
+
 1. 适配器未正确注册为 provider
 2. `_skip_writes` 被意外设为 True
 3. agent_context 不是 "primary"
 
 **解决：**
+
 - 检查日志中是否有 `on_memory_write` 相关输出
 - 确认 `config.yaml` 中 `memory.provider: sinomem`
 - 确认当前会话是主上下文（非 cron/subagent）
-
----
 
 ### 问题 5：jieba 分词未生效
 
@@ -211,16 +218,18 @@ SinoMem 默认已配置 WAL。
 **原因：** jieba 未正确加载或分词配置错误
 
 **解决：**
+
 1. 检查 jieba 是否安装：
+
    ```bash
    ~/.hermes/hermes-agent/venv/bin/python -c "import jieba; print('OK')"
    ```
+
 2. 重建索引：
+
    ```bash
    sinomem reindex
    ```
-
----
 
 ### 问题 6：MCP 工具和适配器工具重复
 
@@ -229,6 +238,7 @@ SinoMem 默认已配置 WAL。
 **原因：** MCP Server 和适配器都提供了存储功能
 
 **解决：** 这是正常现象，两种工具可以共存。建议使用 `memory_store`（适配器方式），因为：
+
 1. 更快（无 IPC 开销）
 2. 支持自动同步（on_memory_write 钩子）
 
@@ -268,15 +278,20 @@ SinoMem 默认已配置 WAL。
 如果需要回退到 holographic：
 
 1. 修改 `~/.hermes/config.yaml`：
+
    ```yaml
    memory:
      provider: holographic
    ```
+
 2. 删除适配器目录：
+
    ```bash
    rm -rf ~/.hermes/plugins/sinomem/
    ```
+
 3. 重启 Hermes：
+
    ```bash
    hermes gateway restart
    ```
@@ -288,6 +303,7 @@ SinoMem 默认已配置 WAL。
 ### 为什么不需要修改 SinoMem 源码？
 
 SinoMem 已经提供了完整的 Python API：
+
 - `MemoryEngine` 类（store / search / list_memories / stats / close）
 - `create_engine()` 工厂函数（自动处理 Embedder 降级）
 - SQLite WAL 模式（支持并发访问）
