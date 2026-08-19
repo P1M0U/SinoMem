@@ -2,20 +2,63 @@
 
 English | [中文](README.md)
 
-![Version](https://img.shields.io/badge/version-v0.7.2-blue)
-![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
-![SQLite](https://img.shields.io/badge/SQLite-FTS5-003B57?logo=sqlite&logoColor=white)
-![jieba](https://img.shields.io/badge/jieba-CJK-blue)
-![ONNX](https://img.shields.io/badge/ONNX-Inference-FF6F00?logo=onnx&logoColor=white)
-![sqlite-vec](https://img.shields.io/badge/sqlite--vec-Vector-purple)
-![MCP](https://img.shields.io/badge/MCP-Server-green)
-![uv](https://img.shields.io/badge/uv-Package--Mgr-orange)
-![License](https://img.shields.io/badge/License-Apache%202.0-blue)
+<p align="center">
+  <img src="https://img.shields.io/badge/version-v0.7.2-blue" alt="Version">
+  <img src="https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/SQLite-FTS5-003B57?logo=sqlite&logoColor=white" alt="SQLite">
+  <img src="https://img.shields.io/badge/jieba-CJK-blue" alt="jieba">
+  <img src="https://img.shields.io/badge/ONNX-Inference-FF6F00?logo=onnx&logoColor=white" alt="ONNX">
+  <img src="https://img.shields.io/badge/sqlite--vec-Vector-purple" alt="sqlite-vec">
+  <img src="https://img.shields.io/badge/MCP-Server-green" alt="MCP">
+  <img src="https://img.shields.io/badge/uv-Package--Mgr-orange" alt="uv">
+  <img src="https://img.shields.io/badge/License-Apache%202.0-blue" alt="License">
+</p>
 
 > Give your AI Agent a long-term memory that never forgets.
 > One command to connect, zero API cost, 100% local storage.
 
 Lightweight, Chinese-friendly Agent memory system with local semantic search — SQLite + FTS5 + jieba tokenization + ONNX embeddings, zero API calls. Connects to Claude Code, Cursor, Cline, Hermes, and any MCP-compatible Agent.
+
+⭐ If SinoMem helps you, a Star would be greatly appreciated — it helps more developers discover the project!
+
+## 📑 Table of Contents
+
+- [Preview](#-preview)
+- [Quick Start (30 seconds)](#quick-start-30-seconds)
+- [Who Is This For?](#who-is-this-for)
+- [Why SinoMem?](#why-sinomem)
+- [Core Features](#core-features)
+- [Project Structure](#project-structure)
+- [Installation](#installation)
+- [Download Embedding Model (Optional, for Semantic Search)](#download-embedding-model-optional-for-semantic-search)
+- [Manual Hermes MCP Config](#manual-hermes-mcp-config)
+- [Multi-Agent Auto Memory Sync (Plugin System)](#multi-agent-auto-memory-sync-plugin-system)
+- [Usage](#usage)
+- [Search Modes](#search-modes)
+- [Uninstall](#uninstall)
+- [FAQ](#faq)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
+- [License](#license)
+- [Contact](#contact)
+
+---
+
+## 🖼 Preview
+
+> **📌 Place demo GIFs and architecture diagrams here**, stored under the `assets/` directory (e.g. `assets/demo.gif`, `assets/architecture.png`).
+
+```
+┌────────────────────────────────────────────┐
+│  assets/                                   │
+│  ├── demo.gif          ← demo: store/search │
+│  └── architecture.png  ← architecture       │
+└────────────────────────────────────────────┘
+```
+
+*(Preview assets are on the way — feel free to contribute a demo GIF or architecture diagram via PR.)*
+
+---
 
 ## Quick Start (30 seconds)
 
@@ -33,6 +76,8 @@ sinomem search "Docker"
 #         User prefers Docker for deployment
 ```
 
+---
+
 ## Who Is This For?
 
 - 🤖 Developers using AI coding assistants like Claude Code, Cursor, Cline, or Hermes
@@ -40,6 +85,8 @@ sinomem search "Docker"
 - 🔒 Teams with data compliance requirements (100% local SQLite storage)
 - 💰 Teams that don't want to pay per-token embedding API costs (local ONNX inference)
 - 🔗 Sharing the same long-term memory across multiple AI tools
+
+---
 
 ## Why SinoMem?
 
@@ -53,7 +100,9 @@ sinomem search "Docker"
 | Database Backup | ✅ Copy one file | ❌ | ❌ |
 | Cost | 💰 Zero API fees | 💰💸 Per-token billing | 💰 Zero |
 
-## Features
+---
+
+## Core Features
 
 - **Chinese FTS5 Search** — jieba tokenization + SQLite FTS5, same tokenizer for write and query, token-aligned
 - **Semantic Search** — Local ONNX embedding model (~24MB min), optional install, dual-mode auto-detection
@@ -94,120 +143,95 @@ install.sh                # One-liner install script
 
 ---
 
-## One-Click Install (Prompt for AI Agent)
+## Installation
 
-Copy the prompt below and send it to your AI Agent — it will handle the install automatically.
+> **💡 This section is the one-liner install for human readers.** If you want to hand the install instructions to an AI Agent, use the dedicated step-by-step guide in [AGENT_INSTALL_EN.md](AGENT_INSTALL_EN.md).
 
-> **💡 If you're using Hermes Agent**, we recommend installing via the **Memory Provider plugin** for a better integration experience (auto sync, in-process calls, tool deduplication). See [Hermes Memory Provider Adapter Guide](sinomem-hermes-adapter-guide.md).
+### One-Liner Script (Recommended)
 
-### Option A: One-Liner Script (Recommended)
+```bash
+# China / Asia users — Gitee + Tsinghua mirror (recommended)
+curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/install.sh | bash
 
-```
-Please install SinoMem for me, run:
+# International users — GitHub + PyPI
+curl -fsSL https://github.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --mirror github
 
-# China / Asia users (Gitee + Tsinghua pip mirror):
+# Full install with semantic search
 curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --with-embedding
-
-# International users (GitHub + PyPI):
-curl -fsSL https://github.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --mirror github --with-embedding
-
-After install, run source ~/.bashrc (or ~/.zshrc) to refresh PATH, then verify with sinomem --help.
-Tell me the result when done.
 ```
 
-### Option B: Install from GitHub
+> For a manual install:
+>
+> ```bash
+> # Or clone manually
+> git clone --depth 1 https://github.com/P1M0U/SinoMem.git ~/.local/share/sinomem
+> cd ~/.local/share/sinomem
+> python3 -m venv .venv
+> .venv/bin/pip install -e .
+> ```
+>
+> The repo is installed to `~/.local/share/sinomem/` by default. The install script automatically adds `.venv/bin` to PATH and configures pip/HuggingFace mirrors for China. After refreshing your terminal, the `sinomem` command is available directly.
 
-```
-Please install SinoMem for me. Steps:
+> **💡 If you're using Hermes Agent**, we recommend installing via the **Memory Provider plugin** for a better integration experience (auto sync, in-process calls, tool deduplication). See [Hermes Memory Provider Adapter Guide](HERMES_ADAPTER.md).
 
-1. Clone and set up virtual environment
-   git clone --depth 1 https://github.com/P1M0U/SinoMem.git ~/.local/share/sinomem
-   cd ~/.local/share/sinomem
-   python3 -m venv .venv
-
-2. If in China, configure pip mirror first for faster downloads:
-   .venv/bin/pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
-   .venv/bin/pip install -e .
-
-3. Verify the installation works
-   .venv/bin/python -c "from sinomem.core.engine import MemoryEngine; print('ok')"
-
-4. Add sinomem CLI to PATH, append to ~/.bashrc or ~/.zshrc:
-   export SINOMEM_HOME="$HOME/.local/share/sinomem"
-   export PATH="$SINOMEM_HOME/.venv/bin:$PATH"
-   # China users also add:
-   export HF_ENDPOINT="https://hf-mirror.com"
-
-5. Ask the user whether to install embedding dependencies (for semantic search):
-   — A. Skip (default) — semantic search degrades gracefully to keyword search
-   — B. Install (onnxruntime + sqlite-vec, ~200MB)
-
-6. If user picked B, run .venv/bin/pip install -e ".[embedding]", then ask if they want to auto-download the ONNX model (~24MB):
-   # China users: set HF_ENDPOINT mirror first
-   export HF_ENDPOINT="https://hf-mirror.com"
-   .venv/bin/pip install huggingface-hub
-   .venv/bin/python -c "from sinomem.core.embedder import ensure_model; print('ok' if ensure_model() else 'download failed')"
-
-7. Ask the user to choose an install method:
-   — A. Hermes Memory Provider plugin (recommended) — Run `ln -s ~/.local/share/sinomem/hermes_plugin/ ~/.hermes/plugins/sinomem`
-   — B. MCP Server — Continue with step 8-9
-
-8. (Only if user chose MCP Server) Add MCP Server config to ~/.hermes/config.yaml under mcp_servers:
-   sinomem:
-     args: []
-     command: ~/.local/share/sinomem/.venv/bin/python -m sinomem.entrypoints.mcp_server
-
-9. Run source ~/.bashrc (or ~/.zshrc) to refresh PATH, then verify with sinomem --help.
-
-Tell me the result when done.
-```
-
-### Option C: Install from Gitee (faster in China)
-
-```
-Please install SinoMem for me. Steps:
-
-1. Clone via Gitee and set up virtual environment (fast in China)
-   git clone --depth 1 https://gitee.com/P1M0U/SinoMem.git ~/.local/share/sinomem
-   cd ~/.local/share/sinomem
-   python3 -m venv .venv
-
-2. Configure pip mirror and install
-   .venv/bin/pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
-   .venv/bin/pip install -e .
-
-3. Verify the installation works
-   .venv/bin/python -c "from sinomem.core.engine import MemoryEngine; print('ok')"
-
-4. Add sinomem CLI to PATH, append to ~/.bashrc or ~/.zshrc:
-   export SINOMEM_HOME="$HOME/.local/share/sinomem"
-   export PATH="$SINOMEM_HOME/.venv/bin:$PATH"
-   export HF_ENDPOINT="https://hf-mirror.com"  # HuggingFace mirror for China
-
-5. Ask the user whether to install embedding dependencies (for semantic search):
-   — A. Skip (default) — semantic search degrades gracefully to keyword search
-   — B. Install (onnxruntime + sqlite-vec, ~200MB)
-
-6. If user picked B, run .venv/bin/pip install -e ".[embedding]", then ask if they want to auto-download the ONNX model (~24MB):
-   export HF_ENDPOINT="https://hf-mirror.com"
-   .venv/bin/pip install huggingface-hub
-   .venv/bin/python -c "from sinomem.core.embedder import ensure_model; print('ok' if ensure_model() else 'download failed')"
-
-7. Ask the user to choose an install method:
-   — A. Hermes Memory Provider plugin (recommended) — Run `ln -s ~/.local/share/sinomem/hermes_plugin/ ~/.hermes/plugins/sinomem`
-   — B. MCP Server — Continue with step 8-9
-
-8. (Only if user chose MCP Server) Add MCP Server config to ~/.hermes/config.yaml under mcp_servers:
-   sinomem:
-     args: []
-     command: ~/.local/share/sinomem/.venv/bin/python -m sinomem.entrypoints.mcp_server
-
-9. Run source ~/.bashrc (or ~/.zshrc) to refresh PATH, then verify with sinomem --help.
-
-Tell me the result when done.
-```
+> **🤖 For the full step-by-step install guide for AI Agents**, see [AGENT_INSTALL_EN.md](AGENT_INSTALL_EN.md).
 
 ---
+
+## Download Embedding Model (Optional, for Semantic Search)
+
+Two embedding models are supported — choose one based on your use case (the system auto-detects model type):
+
+| Model | Size | Dim | Language | Best For |
+|-------|------|-----|----------|----------|
+| **paraphrase-multilingual-MiniLM-L12-v2** | ~113MB | 384 | 50+ languages | Mixed-language content, Chinese + English |
+| **bge-small-zh-v1.5** | ~24MB | 512 | Chinese-optimized | Primarily Chinese, smaller size, better Chinese accuracy |
+
+```bash
+# Create model directory
+mkdir -p models/embedding/onnx
+
+# China users: set HuggingFace mirror (hf-mirror.com is stable and reliable)
+export HF_ENDPOINT="https://hf-mirror.com"
+
+# Install download tool (China users: use Tsinghua pip mirror)
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple huggingface-hub
+
+# ─── Option A: paraphrase-multilingual-MiniLM-L12-v2 (multilingual, ~113MB) ───
+python -c "
+from huggingface_hub import hf_hub_download
+hf_hub_download('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', 'onnx/model_quantized.onnx', local_dir='models/embedding')
+hf_hub_download('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', 'tokenizer.json', local_dir='models/embedding')
+"
+
+# ─── Option B: bge-small-zh-v1.5 (Chinese-optimized, ~24MB) ───
+python -c "
+from huggingface_hub import hf_hub_download
+hf_hub_download('Xenova/bge-small-zh-v1.5', 'onnx/model_quantized.onnx', local_dir='models/embedding')
+hf_hub_download('Xenova/bge-small-zh-v1.5', 'tokenizer.json', local_dir='models/embedding')
+"
+```
+
+> **💡 Mirror tips**:
+> - `HF_ENDPOINT=https://hf-mirror.com` — HuggingFace mirror for China (stable and reliable)
+> - `pip install -i https://pypi.tuna.tsinghua.edu.cn/simple` — Tsinghua PyPI mirror
+> - Users outside China can omit these mirror settings and use the official sources directly.
+>
+> Without the model, semantic search degrades gracefully to keyword search.
+
+---
+
+## Manual Hermes MCP Config
+
+Add to `~/.hermes/config.yaml` under `mcp_servers:`:
+
+```yaml
+  sinomem:
+    args: []
+    command: ~/.local/share/sinomem/.venv/bin/python -m sinomem.entrypoints.mcp_server
+```
+
+Restart Hermes to activate.
 
 ---
 
@@ -256,109 +280,6 @@ plugin = create_plugin()
 plugin.auto_store("User prefers Docker")
 results = plugin.auto_search("deployment tools")
 ```
-
----
-
-## Manual Install
-
-```bash
-# China / Asia users — Gitee + Tsinghua mirror (recommended)
-curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/install.sh | bash
-
-# International users — GitHub + PyPI
-curl -fsSL https://github.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --mirror github
-
-# Or clone manually
-git clone --depth 1 https://github.com/P1M0U/SinoMem.git ~/.local/share/sinomem
-cd ~/.local/share/sinomem
-python3 -m venv .venv
-.venv/bin/pip install -e .
-```
-
-> The install script automatically adds `.venv/bin` to PATH and configures pip/HuggingFace mirrors for China. After refreshing your terminal, the `sinomem` command is available directly.
-
-## Uninstall
-
-A one-liner uninstall script is provided to cleanly remove SinoMem and all related configurations:
-
-```bash
-# GitHub
-curl -fsSL https://github.com/P1M0U/SinoMem/raw/main/uninstall.sh | bash
-
-# Gitee (faster in China)
-curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/uninstall.sh | bash
-
-# Or run locally (after cloning the repo)
-bash uninstall.sh
-```
-
-**What gets cleaned up:**
-
-| Step | Item | Details |
-|------|------|---------|
-| pip package | sinomem | Uninstalls from both system pip and Hermes venv |
-| Install directory | `~/.local/share/sinomem/` | Removes all project files |
-| Environment variables | SINOMEM_HOME / PATH / HF_ENDPOINT | Removes from `.bashrc` / `.zshrc` / `.profile` |
-| Hermes plugin | `~/.hermes/plugins/sinomem` | Removes symlink |
-| Memory database | `~/.sinomem/memory.db` | **Interactive prompt** — keep or delete |
-| Hermes deps | jieba / tokenizers | Uninstalls from Hermes venv (installed by install.sh) |
-| Claude Code hooks | `settings.local.json` | Detects and prompts for cleanup (stale hooks cause errors) |
-| jieba cache | `~/.cache/jieba` | Asks before cleaning |
-
-> 💡 Before deleting the database, the script shows memory count and file size, and requires a second confirmation. You can keep the database and reuse it after reinstalling.
-
-## Manual Hermes MCP Config
-
-Add to `~/.hermes/config.yaml` under `mcp_servers:`:
-
-```yaml
-  sinomem:
-    args: []
-    command: ~/.local/share/sinomem/.venv/bin/python -m sinomem.entrypoints.mcp_server
-```
-
-Restart Hermes to activate.
-
-## Download Embedding Model (Optional, for Semantic Search)
-
-Two embedding models are supported — choose one based on your use case (the system auto-detects model type):
-
-| Model | Size | Dim | Language | Best For |
-|-------|------|-----|----------|----------|
-| **paraphrase-multilingual-MiniLM-L12-v2** | ~113MB | 384 | 50+ languages | Mixed-language content, Chinese + English |
-| **bge-small-zh-v1.5** | ~24MB | 512 | Chinese-optimized | Primarily Chinese, smaller size, better Chinese accuracy |
-
-```bash
-# Create model directory
-mkdir -p models/embedding/onnx
-
-# China users: set HuggingFace mirror (hf-mirror.com is stable and reliable)
-export HF_ENDPOINT="https://hf-mirror.com"
-
-# Install download tool (China users: use Tsinghua pip mirror)
-pip install -i https://pypi.tuna.tsinghua.edu.cn/simple huggingface-hub
-
-# ─── Option A: paraphrase-multilingual-MiniLM-L12-v2 (multilingual, ~113MB) ───
-python -c "
-from huggingface_hub import hf_hub_download
-hf_hub_download('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', 'onnx/model_quantized.onnx', local_dir='models/embedding')
-hf_hub_download('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', 'tokenizer.json', local_dir='models/embedding')
-"
-
-# ─── Option B: bge-small-zh-v1.5 (Chinese-optimized, ~24MB) ───
-python -c "
-from huggingface_hub import hf_hub_download
-hf_hub_download('Xenova/bge-small-zh-v1.5', 'onnx/model_quantized.onnx', local_dir='models/embedding')
-hf_hub_download('Xenova/bge-small-zh-v1.5', 'tokenizer.json', local_dir='models/embedding')
-"
-```
-
-> **💡 Mirror tips**:
-> - `HF_ENDPOINT=https://hf-mirror.com` — HuggingFace mirror for China (stable and reliable)
-> - `pip install -i https://pypi.tuna.tsinghua.edu.cn/simple` — Tsinghua PyPI mirror
-> - Users outside China can omit these mirror settings and use the official sources directly.
->
-> Without the model, semantic search degrades gracefully to keyword search.
 
 ---
 
@@ -460,6 +381,91 @@ After heavy deletions, SQLite does not automatically reclaim disk space. The `va
 | `keyword` | FTS5 keyword matching | Precise lookup, e.g. searching "feishu" |
 | `semantic` | Vector semantic similarity | Fuzzy lookup, e.g. searching "how to send files" |
 | `hybrid` | Keyword + semantic weighted | General purpose, balances precision and recall |
+
+---
+
+## Uninstall
+
+A one-liner uninstall script is provided to cleanly remove SinoMem and all related configurations:
+
+```bash
+# GitHub
+curl -fsSL https://github.com/P1M0U/SinoMem/raw/main/uninstall.sh | bash
+
+# Gitee (faster in China)
+curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/uninstall.sh | bash
+
+# Or run locally (after cloning the repo)
+bash uninstall.sh
+```
+
+**What gets cleaned up:**
+
+| Step | Item | Details |
+|------|------|---------|
+| pip package | sinomem | Uninstalls from both system pip and Hermes venv |
+| Install directory | `~/.local/share/sinomem/` | Removes all project files |
+| Environment variables | SINOMEM_HOME / PATH / HF_ENDPOINT | Removes from `.bashrc` / `.zshrc` / `.profile` |
+| Hermes plugin | `~/.hermes/plugins/sinomem` | Removes symlink |
+| Memory database | `~/.sinomem/memory.db` | **Interactive prompt** — keep or delete |
+| Hermes deps | jieba / tokenizers | Uninstalls from Hermes venv (installed by install.sh) |
+| Claude Code hooks | `settings.local.json` | Detects and prompts for cleanup (stale hooks cause errors) |
+| jieba cache | `~/.cache/jieba` | Asks before cleaning |
+
+> 💡 Before deleting the database, the script shows memory count and file size, and requires a second confirmation. You can keep the database and reuse it after reinstalling.
+
+---
+
+## FAQ
+
+### Q1: Can I still use semantic search without downloading an embedding model?
+
+Yes. Without the model, semantic search degrades gracefully to keyword search. Download a model (~24MB min) whenever you need semantic search.
+
+### Q2: How do I use SinoMem as Hermes' Memory Provider?
+
+The **Hermes Memory Provider plugin** is the recommended way — see the [Hermes Memory Provider Adapter Guide](HERMES_ADAPTER.md). You can also configure SinoMem as an MCP Server (see [Manual Hermes MCP Config](#manual-hermes-mcp-config)).
+
+### Q3: Can multiple agents share the same memory?
+
+Yes. SinoMem stores data in a single SQLite file (WAL mode) and supports multi-agent concurrent access (check_same_thread=False). One `.db` file can be shared across Claude Code, Cursor, Cline, and Hermes.
+
+### Q4: How do I migrate from other memory systems?
+
+Use `sinomem import` to import from holographic memory, and `sinomem migrate` to generate embeddings for existing memories. See [Data Migration](#data-migration).
+
+### Q5: Does SinoMem call any cloud APIs?
+
+No. All data is stored 100% locally, and embeddings are computed with a local ONNX model — zero API calls, zero cost.
+
+---
+
+## Roadmap
+
+- [x] SQLite + FTS5 Chinese full-text search (jieba tokenization)
+- [x] Local ONNX semantic search (optional install, dual-mode auto-detection)
+- [x] Hybrid search (RRF — Reciprocal Rank Fusion)
+- [x] MCP Server (14 tools)
+- [x] Multi-agent auto-sync plugins (Claude Code / LangChain / Hermes)
+- [x] One-liner install & uninstall scripts
+- [ ] CrewAI / AutoGen plugin polish (currently WIP)
+- [ ] Demo GIFs & architecture diagrams (`assets/`)
+- [ ] More embedding model support
+- [ ] Memory visualization panel
+
+---
+
+## Contributing
+
+Contributions are welcome! Whether it's reporting a bug, improving docs, or adding a feature, your participation is appreciated.
+
+- 🐛 Found a bug → open an [Issue](https://gitee.com/P1M0U/SinoMem/issues)
+- ✨ New feature / improvement → open a [PR](https://gitee.com/P1M0U/SinoMem/pulls)
+- 📝 Docs or demo assets → submit a PR directly (place GIFs and other media under `assets/`)
+
+**Development conventions**: keep the design modular with high cohesion and low coupling; run `ruff check` and `ruff format` on every `.py` file before committing; follow the Conventional Commits spec.
+
+---
 
 ## License
 
