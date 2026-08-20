@@ -68,12 +68,12 @@ set_memory_provider() {
     #        → 追加 provider: sinomem，mcp_servers 不变 ✓
     #   场景3 无 memory 段 → 追加完整 memory: provider: sinomem ✓
     awk '
-        BEGIN { in_mem = 0; done = 0 }
-        /^[a-zA-Z_]/ { in_mem = 0 }                          # 顶格键开启新段
-        /^memory:/ { in_mem = 1 }                            # 进入 memory 段
-        in_mem && !done && /^[[:space:]]*provider:/ {        # memory 段内首个 provider
+        BEGIN { in_memory_section = 0; provider_replaced = 0 }
+        /^[a-zA-Z_]/ { in_memory_section = 0 }              # 顶格键开启新段
+        /^memory:/ { in_memory_section = 1 }                # 进入 memory 段
+        in_memory_section && !provider_replaced && /^[[:space:]]*provider:/ {
             print "  provider: sinomem"
-            done = 1
+            provider_replaced = 1
             next
         }
         { print }
