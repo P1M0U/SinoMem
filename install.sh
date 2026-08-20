@@ -363,6 +363,29 @@ if [ -d "$HOME/.hermes" ] || [ -n "${HERMES_HOME:-}" ]; then
 
         if "$HERMES_PYTHON" -c "import sinomem" 2>/dev/null; then
             echo -e "  ${GREEN}✓${NC} Hermes venv 配置完成（${HERMES_VENV}）"
+
+            # ── 自动启用 SinoMem 为 Hermes 的 memory provider ──
+            # 若 config.yaml 存在 memory 段则替换 provider，否则追加
+            HERMES_CONFIG="$HERMES_BASE/config.yaml"
+            if [ -f "$HERMES_CONFIG" ]; then
+                if grep -q "^memory:" "$HERMES_CONFIG"; then
+                    # 已有 memory 段：替换 provider 行（仅替换顶格 memory: 下的首个 provider）
+                    if grep -q "provider:" "$HERMES_CONFIG"; then
+                        sed -i 's|^\(\s*provider:\).*|\1 sinomem|' "$HERMES_CONFIG"
+                        echo -e "  ${GREEN}✓${NC} 已更新 config.yaml → memory.provider: sinomem"
+                    else
+                        sed -i '/^memory:/a\  provider: sinomem' "$HERMES_CONFIG"
+                        echo -e "  ${GREEN}✓${NC} 已新增 config.yaml → memory.provider: sinomem"
+                    fi
+                else
+                    printf "\nmemory:\n  provider: sinomem\n" >> "$HERMES_CONFIG"
+                    echo -e "  ${GREEN}✓${NC} 已新增 config.yaml memory 段 → provider: sinomem"
+                fi
+            else
+                echo -e "  ${YELLOW}!${NC} 未找到 ${HERMES_CONFIG}，请手动配置："
+                echo "      memory:"
+                echo "        provider: sinomem"
+            fi
         else
             echo -e "  ${YELLOW}!${NC} Hermes venv 安装验证失败，请手动执行："
             echo "    ${HERMES_PYTHON} -m pip install -e ${INSTALL_DIR}"
@@ -414,3 +437,59 @@ echo -e "  ${BOLD}更新：${NC}"
 echo "    cd ${INSTALL_DIR} && git pull && .venv/bin/pip install -e ."
 echo "  ────────────────────────────────────────────"
 echo ""
+
+# ── Hermes 集成校验（处理安装顺序盲区）──
+# 若用户先装 SinoMem、后装 Hermes，或 Hermes 使用自定义路径，
+# 上面第 [5/5] 步可能未完成集成。此处检测并给出明确指引。
+if [ -d "$HOME/.hermes" ] || [ -n "${HERMES_HOME:-}" ]; then
+    HERMES_BASE="${HERMES_HOME:-$HOME/.hermes}"
+    HERMES_PLUGIN_LINK="$HERMES_BASE/plugins/sinomem"
+    echo ""
+    echo -e "  ${BOLD}Hermes 集成校验：${NC}"
+
+    # 1. 校验插件链接
+    if [ -L "$HERMES_PLUGIN_LINK" ] || [ -d "$HERMES_PLUGIN_LINK" ]; then
+        echo -e "    ${GREEN}✓${NC} Hermes 插件链接存在"
+    else
+        echo -e "    ${YELLOW}!${NC} Hermes 插件未链接，请执行："
+        echo "      ln -s ${INSTALL_DIR}/hermes_plugin $HERMES_PLUGIN_LINK"
+    fi
+
+    # 2. 校验 Hermes venv 中 sinomem 是否可导入
+    HERMES_VENV=""
+    for venv_path in \
+        "$HERMES_BASE/hermes-agent/venv" \
+        "$HERMES_BASE/venv" \
+        "$HERMES_BASE/.venv"; do
+        if [ -f "$venv_path/bin/python" ]; then
+            HERMES_VENV="$venv_path"
+            break
+        fi
+    done
+
+    if [ -n "$HERMES_VENV" ]; then
+        if "$HERMES_VENV/bin/python" -c "import sinomem" 2>/dev/null; then
+            echo -e "    ${GREEN}✓${NC} Hermes venv 已安装 sinomem（${HERMES_VENV}）"
+        else
+            echo -e "    ${YELLOW}!${NC} Hermes venv 缺少 sinomem，请执行："
+            echo "      ${HERMES_VENV}/bin/python -m pip install -e ${INSTALL_DIR}"
+            echo "      ${HERMES_VENV}/bin/python -m pip install jieba tokenizers"
+        fi
+    else
+        echo -e "    ${YELLOW}!${NC} 未找到 Hermes venv，请将 sinomem 依赖装入 Hermes 的虚拟环境"
+    fi
+
+    # 3. 校验 config.yaml 中 memory.provider
+    HERMES_CONFIG="$HERMES_BASE/config.yaml"
+    if [ -f "$HERMES_CONFIG" ]; then
+        if grep -q "provider: sinomem" "$HERMES_CONFIG"; then
+            echo -e "    ${GREEN}✓${NC} config.yaml → memory.provider: sinomem 已启用"
+        else
+            echo -e "    ${YELLOW}!${NC} config.yaml 未启用 SinoMem，请手动修改："
+            echo "      memory:"
+            echo "        provider: sinomem"
+        fi
+    fi
+    echo "  验证:  hermes memory status 应显示 Provider: sinomem"
+    echo "  ────────────────────────────────────────────"
+fi

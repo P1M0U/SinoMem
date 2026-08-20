@@ -1,6 +1,8 @@
 """Hermes 插件发现锚点 — ⚠️ 本文件及 plugin.yaml 不可删除
 
-Hermes 通过扫描本目录下的 plugin.yaml 发现并加载插件。
+Hermes 通过扫描本目录下的 plugin.yaml 发现并加载插件，
+并以源码文本特征识别 MemoryProvider 类型插件（本文件保留
+"MemoryProvider" 字样以通过 Hermes 的插件类型检查，不可移除）。
 所有业务逻辑请修改 sinomem/plugins/hermes/provider.py。
 
 这个双轨结构的原因：
