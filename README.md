@@ -48,17 +48,15 @@
 
 ## 🖼 效果预览
 
-> **📌 此处建议存放演示 GIF 与架构简图**，放置路径：`assets/` 目录（如 `assets/demo.gif`、`assets/architecture.png`）。
+### 系统架构简图
 
-```
-┌────────────────────────────────────────────┐
-│  assets/                                   │
-│  ├── demo.gif          ← 演示：store/search │
-│  └── architecture.png  ← 架构简图           │
-└────────────────────────────────────────────┘
-```
+![SinoMem 系统架构简图](assets/SinoMem系统架构简图.png)
 
-*（预览素材准备中，欢迎通过 PR 贡献演示 GIF / 架构图。）*
+### 演示视频 / GIF（准备中）
+
+> **📌 演示 GIF 放置路径：`assets/demo.gif`（演示 store / search 操作）。**
+
+*（演示素材准备中，欢迎通过 PR 贡献。）*
 
 ---
 

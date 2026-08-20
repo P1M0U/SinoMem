@@ -46,17 +46,15 @@ Lightweight, Chinese-friendly Agent memory system with local semantic search —
 
 ## 🖼 Preview
 
-> **📌 Place demo GIFs and architecture diagrams here**, stored under the `assets/` directory (e.g. `assets/demo.gif`, `assets/architecture.png`).
+### System Architecture
 
-```
-┌────────────────────────────────────────────┐
-│  assets/                                   │
-│  ├── demo.gif          ← demo: store/search │
-│  └── architecture.png  ← architecture       │
-└────────────────────────────────────────────┘
-```
+![SinoMem System Architecture](assets/SinoMem系统架构简图.png)
 
-*(Preview assets are on the way — feel free to contribute a demo GIF or architecture diagram via PR.)*
+### Demo Video / GIF (Coming Soon)
+
+> **📌 Demo GIF path: `assets/demo.gif` (shows store / search operations).**
+
+*(Demo assets are on the way — feel free to contribute a demo GIF via PR.)*
 
 ---
 

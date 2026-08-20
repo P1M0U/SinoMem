@@ -369,13 +369,30 @@ if [ -d "$HOME/.hermes" ] || [ -n "${HERMES_HOME:-}" ]; then
             HERMES_CONFIG="$HERMES_BASE/config.yaml"
             if [ -f "$HERMES_CONFIG" ]; then
                 if grep -q "^memory:" "$HERMES_CONFIG"; then
-                    # 已有 memory 段：替换 provider 行（仅替换顶格 memory: 下的首个 provider）
-                    if grep -q "provider:" "$HERMES_CONFIG"; then
-                        sed -i 's|^\(\s*provider:\).*|\1 sinomem|' "$HERMES_CONFIG"
-                        echo -e "  ${GREEN}✓${NC} 已更新 config.yaml → memory.provider: sinomem"
+                    # 已有 memory 段：精确替换该段下的 provider 行
+                    # 用 awk 感知段落边界（段首顶格键开启新段），
+                    # 仅修改 memory: 段内首个 provider:，不影响 mcp_servers 等其他段
+                    #
+                    # 手动验证记录（2026-08-20）：
+                    #   场景1 memory.provider=holographic + mcp_servers.foo.provider=something
+                    #        → 仅 memory.provider 改为 sinomem，mcp_servers 不变 ✓
+                    #   场景2 memory 无 provider + mcp_servers.bar.provider=keepme
+                    #        → 追加 provider: sinomem，mcp_servers 不变 ✓
+                    #   场景3 无 memory 段
+                    #        → 追加完整 memory: provider: sinomem ✓
+                    if awk 'BEGIN{in_mem=0; done=0} /^[a-zA-Z_]/ {in_mem=0} /^memory:/ {in_mem=1} in_mem && !done && /^[[:space:]]*provider:/ {print "  provider: sinomem"; done=1; next} {print}' "$HERMES_CONFIG" > "$HERMES_CONFIG.tmp"; then
+                        if diff -q "$HERMES_CONFIG" "$HERMES_CONFIG.tmp" >/dev/null 2>&1; then
+                            # 未发生替换 → memory 段无 provider 行，追加
+                            rm -f "$HERMES_CONFIG.tmp"
+                            sed -i '/^memory:/a\  provider: sinomem' "$HERMES_CONFIG"
+                            echo -e "  ${GREEN}✓${NC} 已新增 config.yaml → memory.provider: sinomem"
+                        else
+                            mv "$HERMES_CONFIG.tmp" "$HERMES_CONFIG"
+                            echo -e "  ${GREEN}✓${NC} 已更新 config.yaml → memory.provider: sinomem"
+                        fi
                     else
-                        sed -i '/^memory:/a\  provider: sinomem' "$HERMES_CONFIG"
-                        echo -e "  ${GREEN}✓${NC} 已新增 config.yaml → memory.provider: sinomem"
+                        rm -f "$HERMES_CONFIG.tmp"
+                        echo -e "  ${YELLOW}!${NC} config.yaml 处理失败，请手动设置 memory.provider: sinomem"
                     fi
                 else
                     printf "\nmemory:\n  provider: sinomem\n" >> "$HERMES_CONFIG"
