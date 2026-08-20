@@ -118,7 +118,7 @@ sinomem search "Docker"
 
 ## Project Structure
 
-```
+```text
 sinomem/        # Core memory engine
 ├── core/                 # Storage, search, tokenization, embeddings
 ├── dicts/                # Custom jieba dictionaries
@@ -447,7 +447,7 @@ No. All data is stored 100% locally, and embeddings are computed with a local ON
 - [x] Multi-agent auto-sync plugins (Claude Code / LangChain / Hermes)
 - [x] One-liner install & uninstall scripts
 - [ ] CrewAI / AutoGen plugin polish (currently WIP)
-- [ ] Demo GIFs & architecture diagrams (`assets/`)
+- [ ] Record a CLI demo GIF (stored at `assets/demo.gif`)
 - [ ] More embedding model support
 - [ ] Memory visualization panel
 
@@ -461,6 +461,8 @@ Contributions are welcome! Whether it's reporting a bug, improving docs, or addi
 - ✨ New feature / improvement → open a [PR](https://gitee.com/P1M0U/SinoMem/pulls)
 - 📝 Docs or demo assets → submit a PR directly (place GIFs and other media under `assets/`)
 
+Beginner-friendly tasks are labeled with **good first issue** — new contributors are welcome!
+
 **Development conventions**: keep the design modular with high cohesion and low coupling; run `ruff check` and `ruff format` on every `.py` file before committing; follow the Conventional Commits spec.
 
 ---
@@ -469,7 +471,7 @@ Contributions are welcome! Whether it's reporting a bug, improving docs, or addi
 
 [Apache 2.0](LICENSE)
 
-Copyright © 2026 [P1M0U](https://github.com/P1M0U)
+Copyright © 2026 [P1M0U](https://github.com/P1M0U) · [Gitee](https://gitee.com/P1M0U)
 
 ---
 

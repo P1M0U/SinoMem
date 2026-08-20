@@ -122,7 +122,7 @@ sinomem search "Docker"
 
 ## 项目结构
 
-```
+```text
 sinomem/        # 核心记忆引擎
 ├── core/                 # 存储、搜索、分词、嵌入
 ├── dicts/                # 自定义 jieba 词典
@@ -441,7 +441,7 @@ bash uninstall.sh
 - [x] 多 Agent 自动同步插件（Claude Code / LangChain / Hermes）
 - [x] 一键安装脚本 + 一键卸载脚本
 - [ ] CrewAI / AutoGen 插件完善（当前为 WIP）
-- [ ] 效果演示 GIF / 架构图补充（`assets/`）
+- [ ] 录制 CLI 操作演示 GIF（存放至 `assets/demo.gif`）
 - [ ] 更多嵌入模型支持
 - [ ] 记忆可视化面板
 
@@ -455,6 +455,8 @@ bash uninstall.sh
 - ✨ 新功能 / 改进 → 提交 [PR](https://gitee.com/P1M0U/SinoMem/pulls)
 - 📝 文档优化 / 演示素材 → 直接提交 PR（GIF 等素材建议放入 `assets/`）
 
+适合新手入门的简易任务会打上 **good first issue** 标签，欢迎新手开发者参与。
+
 **开发约定**：请保持模块化设计、代码高内聚低耦合；`.py` 文件提交前执行 `ruff check` 和 `ruff format` 并保证通过；提交信息遵循 Conventional Commits 规范。
 
 ---
@@ -463,7 +465,7 @@ bash uninstall.sh
 
 [Apache 2.0](LICENSE)
 
-Copyright © 2026 [P1M0U](https://github.com/P1M0U)
+Copyright © 2026 [P1M0U](https://github.com/P1M0U) · [Gitee](https://gitee.com/P1M0U)
 
 ---
 
