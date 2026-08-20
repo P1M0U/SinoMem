@@ -42,6 +42,13 @@
 
 > **💡 如果你使用了一键安装脚本（`install.sh`），以下步骤已自动完成，可直接跳到验证部分。**
 
+> **⚠️ 最常见的集成失败原因（按排查优先级）：**
+> 1. **插件被 Hermes 源码检查跳过**：Hermes 扫描插件时会检查 `__init__.py` 源码中是否包含 `"MemoryProvider"` 字样。若该字样缺失，插件会被静默跳过，`hermes memory status` 一直显示 **NOT installed**。本项目 `hermes_plugin/__init__.py` 已包含该特征文本，**请勿删除或改动注释**。
+> 2. **Hermes venv 缺少依赖**：适配器在 Hermes 进程中运行，若 `jieba` / `tokenizers` / `sinomem` 未装入 Hermes 自己的 venv，加载必然失败。
+> 3. **`memory.provider` 未启用**：必须在 `~/.hermes/config.yaml` 中把 `memory.provider` 设为 `sinomem`，否则记忆仍走内置 MEMORY.md。
+>
+> **安装顺序说明**：先装 Hermes 后装 SinoMem，或反过来，结果应一致。若先装 SinoMem、后装 Hermes（或 Hermes 为自定义路径），install.sh 可能未完成集成——请运行安装脚本末尾的 **Hermes 集成校验**，或手动执行以下步骤。
+
 ### 步骤 1：安装 Python 依赖和 sinomem 到 Hermes venv
 
 **⚠️ 关键步骤，跳过会导致适配器加载失败！**
@@ -241,6 +248,29 @@ SinoMem 默认已配置 WAL。
 
 1. 更快（无 IPC 开销）
 2. 支持自动同步（on_memory_write 钩子）
+
+### 问题 7：hermes memory status 一直显示 NOT installed
+
+**症状：** 依赖已装、config.yaml 已配置，但 `hermes memory status` 仍显示 `NOT installed`
+
+**原因：** Hermes 扫描插件时会做**源码文本检查**——读取插件目录的 `__init__.py`，若其中不包含 `"MemoryProvider"` 字样，则判定该插件不是 memory provider 并静默跳过。早期版本的 `hermes_plugin/__init__.py` 只有 `import` 语句、缺少该字样，导致插件被跳过。
+
+**解决：**
+
+1. 确认 `hermes_plugin/__init__.py` 的 docstring 中包含 `"MemoryProvider"` 字样（本项目已修复，请勿删除相关注释）
+2. 确认 `plugin.yaml` 声明了插件类型：
+
+   ```yaml
+   type: memory_provider
+   provider: sinomem
+   ```
+
+3. 重新链接插件并重启 Hermes：
+
+   ```bash
+   ln -s ~/.local/share/sinomem/hermes_plugin/ ~/.hermes/plugins/sinomem
+   hermes gateway restart
+   ```
 
 ---
 
