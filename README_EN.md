@@ -19,6 +19,8 @@ English | [中文](README.md)
 
 Lightweight, Chinese-friendly Agent memory system with local semantic search — SQLite + FTS5 + jieba tokenization + ONNX embeddings, zero API calls. Connects to Claude Code, Cursor, Cline, Hermes, and any MCP-compatible Agent.
 
+> 🎯 A local long-term memory component built for AI Agents, compatible with the standard MCP protocol.
+
 ⭐ If SinoMem helps you, a Star would be greatly appreciated — it helps more developers discover the project!
 
 ## 📑 Table of Contents
@@ -74,6 +76,10 @@ sinomem search "Docker"
 #         User prefers Docker for deployment
 ```
 
+> ⚠️ **You must open a new terminal window** (or run `source ~/.bashrc`) after install — otherwise the `sinomem` command won't be recognized.
+>
+> 💾 The default memory database lives at `~/.sinomem/memory.db` — to back it up, simply copy this single file.
+
 ---
 
 ## Who Is This For?
@@ -94,7 +100,7 @@ sinomem search "Docker"
 | Local Deployment | ✅ SQLite single file | ❌ API required | ✅ Framework-locked |
 | Embedding Model | ✅ ONNX local ~24MB | OpenAI API | None |
 | MCP Protocol | ✅ Standard MCP Server | ❌ | ❌ |
-| Cross-Agent Sharing | ✅ One .db file | ❌ | ❌ |
+| Cross-Agent Sharing | ✅ One .db file | ❌ | ❌ (Agent-bound, can't share across tools) |
 | Database Backup | ✅ Copy one file | ❌ | ❌ |
 | Cost | 💰 Zero API fees | 💰💸 Per-token billing | 💰 Zero |
 
@@ -223,10 +229,12 @@ hf_hub_download('Xenova/bge-small-zh-v1.5', 'tokenizer.json', local_dir='models/
 
 Add to `~/.hermes/config.yaml` under `mcp_servers:`:
 
+> **📌 Tip**: paste the config below as a **child** of `mcp_servers:` — keep the YAML indentation as shown.
+
 ```yaml
-  sinomem:
-    args: []
-    command: ~/.local/share/sinomem/.venv/bin/python -m sinomem.entrypoints.mcp_server
+sinomem:
+  args: []
+  command: ~/.local/share/sinomem/.venv/bin/python -m sinomem.entrypoints.mcp_server
 ```
 
 Restart Hermes to activate.
@@ -401,13 +409,13 @@ bash uninstall.sh
 
 | Step | Item | Details |
 |------|------|---------|
-| pip package | sinomem | Uninstalls from both system pip and Hermes venv |
+| pip package | sinomem | Uninstalls from both<br>system pip and Hermes venv |
 | Install directory | `~/.local/share/sinomem/` | Removes all project files |
-| Environment variables | SINOMEM_HOME / PATH / HF_ENDPOINT | Removes from `.bashrc` / `.zshrc` / `.profile` |
+| Environment variables | SINOMEM_HOME /<br>PATH / HF_ENDPOINT | Removes from `.bashrc` /<br>`.zshrc` / `.profile` |
 | Hermes plugin | `~/.hermes/plugins/sinomem` | Removes symlink |
-| Memory database | `~/.sinomem/memory.db` | **Interactive prompt** — keep or delete |
-| Hermes deps | jieba / tokenizers | Uninstalls from Hermes venv (installed by install.sh) |
-| Claude Code hooks | `settings.local.json` | Detects and prompts for cleanup (stale hooks cause errors) |
+| Memory database | `~/.sinomem/memory.db` | **Interactive prompt** —<br>keep or delete |
+| Hermes deps | jieba / tokenizers | Uninstalls from Hermes venv<br>(installed by install.sh) |
+| Claude Code hooks | `settings.local.json` | Detects and prompts for cleanup<br>(stale hooks cause errors) |
 | jieba cache | `~/.cache/jieba` | Asks before cleaning |
 
 > 💡 Before deleting the database, the script shows memory count and file size, and requires a second confirmation. You can keep the database and reuse it after reinstalling.
@@ -435,6 +443,18 @@ Use `sinomem import` to import from holographic memory, and `sinomem migrate` to
 ### Q5: Does SinoMem call any cloud APIs?
 
 No. All data is stored 100% locally, and embeddings are computed with a local ONNX model — zero API calls, zero cost.
+
+### Q6: I get "sinomem: command not found" after install
+
+The installer modifies the `PATH` environment variable — **open a new terminal window** (or run `source ~/.bashrc`) for it to take effect. You can also invoke it via the full path:
+
+```bash
+~/.local/share/sinomem/.venv/bin/sinomem
+```
+
+### Q7: MCP Server fails to start — virtual environment not found?
+
+Make sure the one-liner install script finished completely; **do not move or rename** the `~/.local/share/sinomem` directory, otherwise the absolute paths in the MCP Server config will break. If you already moved it, re-run the install script to repair.
 
 ---
 

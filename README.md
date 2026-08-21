@@ -12,14 +12,14 @@
   <img src="https://img.shields.io/badge/MCP-Server-green" alt="MCP">
   <img src="https://img.shields.io/badge/uv-包管理-orange" alt="uv">
   <img src="https://img.shields.io/badge/License-Apache%202.0-blue" alt="License">
-  <img src="https://gitee.com/P1M0U/SinoMem/badge/star.svg" alt="Gitee Stars">
-  <img src="https://gitee.com/P1M0U/SinoMem/badge/fork.svg" alt="Gitee Forks">
 </p>
 
 > 让你的 AI Agent 拥有永不遗忘的长期记忆。
 > 一行命令接入，零 API 费用，数据 100% 本地存储。
 
 轻量级中文友好的 Agent 记忆增强系统，支持 SQLite + FTS5 + jieba 分词 + 本地 ONNX 向量搜索，零 API 调用。可通过 MCP 协议接入 Claude Code、Cursor、Cline、Hermes 等任意 Agent。
+
+> 🎯 专为 AI Agent 打造的本地中文长期记忆组件，兼容标准 MCP 协议。
 
 ⭐ 如果 SinoMem 对你有帮助，欢迎点个 Star，让更多开发者看到它！
 
@@ -76,7 +76,10 @@ sinomem search "Docker"
 #        用户偏好使用 Docker 部署
 ```
 
-> 安装到 `~/.local/share/sinomem/`，不会污染 Desktop 目录。安装后可直接使用 `sinomem` 命令。
+> ⚠️ **安装完成后必须新开终端窗口**（或执行 `source ~/.bashrc`），否则 `sinomem` 命令无法识别。
+> 安装到 `~/.local/share/sinomem/`，不会污染 Desktop 目录。
+>
+> 💾 默认记忆数据库路径：`~/.sinomem/memory.db`，备份时直接复制该文件即可。
 
 ---
 
@@ -98,7 +101,7 @@ sinomem search "Docker"
 | 本地部署 | ✅ SQLite 单文件 | ❌ 需 API | ✅ 绑定框架 |
 | 嵌入模型 | ✅ ONNX 本地 ~24MB | OpenAI API | 无 |
 | MCP 协议 | ✅ 标准 MCP Server | ❌ | ❌ |
-| 跨 Agent 共享 | ✅ 一份 .db 通用 | ❌ | ❌ |
+| 跨 Agent 共享 | ✅ 一份 .db 通用 | ❌ | ❌（绑定 Agent，无法跨工具共享记忆） |
 | 数据库可备份 | ✅ 单文件复制即可 | ❌ | ❌ |
 | 费用 | 💰 零 API 费用 | 💰💸 按 token 计费 | 💰 零 |
 
@@ -217,10 +220,12 @@ hf_hub_download('Xenova/bge-small-zh-v1.5', 'tokenizer.json', local_dir='models/
 
 在 `~/.hermes/config.yaml` 的 `mcp_servers:` 下添加：
 
+> **📌 提示**：将以下配置粘贴到 `mcp_servers:` 的**下级**，注意保持 YAML 缩进。
+
 ```yaml
-  sinomem:
-    args: []
-    command: ~/.local/share/sinomem/.venv/bin/python -m sinomem.entrypoints.mcp_server
+sinomem:
+  args: []
+  command: ~/.local/share/sinomem/.venv/bin/python -m sinomem.entrypoints.mcp_server
 ```
 
 重启 Hermes 后生效。
@@ -397,11 +402,11 @@ bash uninstall.sh
 |------|--------|------|
 | pip 包 | sinomem | 系统 pip + Hermes venv 双重卸载 |
 | 安装目录 | `~/.local/share/sinomem/` | 删除全部项目文件 |
-| 环境变量 | SINOMEM_HOME / PATH / HF_ENDPOINT | 从 `.bashrc` / `.zshrc` / `.profile` 中移除 |
+| 环境变量 | SINOMEM_HOME /<br>PATH / HF_ENDPOINT | 从 `.bashrc` /<br>`.zshrc` / `.profile` 中移除 |
 | Hermes 插件 | `~/.hermes/plugins/sinomem` | 移除符号链接 |
 | 记忆数据库 | `~/.sinomem/memory.db` | **交互式询问**，可选择保留或删除 |
 | Hermes 依赖 | jieba / tokenizers | 卸载 install.sh 安装到 Hermes venv 的依赖 |
-| Claude Code hooks | `settings.local.json` | 检测并提示清理（卸载后残留 hooks 会报错） |
+| Claude Code hooks | `settings.local.json` | 检测并提示清理<br>（卸载后残留 hooks 会报错） |
 | jieba 缓存 | `~/.cache/jieba` | 询问是否清理 |
 
 > 💡 卸载记忆数据库前会显示记忆条数和文件大小，并需要二次确认。重新安装后可继续使用保留的数据库。
@@ -429,6 +434,18 @@ bash uninstall.sh
 ### Q5：SinoMem 会调用任何云端 API 吗？
 
 不会。数据 100% 本地存储，嵌入推理使用本地 ONNX 模型，零 API 调用、零费用。
+
+### Q6：安装后提示 sinomem: command not found
+
+安装脚本会修改环境变量 PATH，需要**新开终端窗口**（或执行 `source ~/.bashrc`）后生效。也可以直接用完整路径调用：
+
+```bash
+~/.local/share/sinomem/.venv/bin/sinomem
+```
+
+### Q7：MCP Server 启动失败，虚拟环境找不到？
+
+确认一键安装脚本已完整执行完毕；**不要手动移动或重命名** `~/.local/share/sinomem` 目录，否则 MCP Server 配置中的绝对路径会失效。如已移动，请重新执行安装脚本修复。
 
 ---
 
