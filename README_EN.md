@@ -149,7 +149,7 @@ install.sh                # One-liner install script
 
 ## Installation
 
-> **💡 This section is the one-liner install for human readers.** If you want to hand the install instructions to an AI Agent, use the dedicated step-by-step guide in [AGENT_INSTALL_EN.md](AGENT_INSTALL_EN.md).
+> **💡 This section is the one-liner install for human readers.** If you want to hand the install instructions to an AI Agent, use the dedicated step-by-step guide in [AGENT_INSTALL.md](AGENT_INSTALL.md) (instructions for AI Agents, language-agnostic).
 
 ### One-Liner Script (Recommended)
 
@@ -178,7 +178,7 @@ curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --wi
 
 > **💡 If you're using Hermes Agent**, we recommend installing via the **Memory Provider plugin** for a better integration experience (auto sync, in-process calls, tool deduplication). See [Hermes Memory Provider Adapter Guide](HERMES_ADAPTER.md).
 
-> **🤖 For the full step-by-step install guide for AI Agents**, see [AGENT_INSTALL_EN.md](AGENT_INSTALL_EN.md).
+> **🤖 For the full step-by-step install guide for AI Agents**, see [AGENT_INSTALL.md](AGENT_INSTALL.md).
 
 ---
 
