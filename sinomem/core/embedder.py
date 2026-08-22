@@ -1,10 +1,9 @@
 """嵌入模型封装 — onnxruntime + ONNX 量化模型
 
 支持的模型：
-- paraphrase-multilingual-MiniLM-L12-v2 (384维, 50+语言, 均值池化)
 - bge-small-zh-v1.5 (512维, 中文优化, CLS池化)
 
-自动检测模型类型，无需手动配置。
+保持轻量与中文友好，固定使用 bge 模型，无需手动配置。
 """
 
 import functools
@@ -29,7 +28,7 @@ _MIRROR_HF = "https://hf-mirror.com"
 # 快速探测超时（秒），避免在不可达端点上等待过久
 _PROBE_TIMEOUT = 3
 
-# 嵌入模型最大输入序列长度（bge-small-zh 与 MiniLM-L12 均为 512 token）
+# 嵌入模型最大输入序列长度（bge-small-zh 为 512 token）
 MAX_SEQ_LEN = 512
 
 # 批量推理分块大小，避免超大 batch 推理内存溢出
@@ -279,32 +278,6 @@ def _count_session_inputs(session: ort.InferenceSession) -> int:
     return len(session.get_inputs())
 
 
-def _detect_model_type(
-    session: ort.InferenceSession, model_name: str = ""
-) -> str:
-    """根据模型文件名 + 输出维度自动检测模型类型
-
-    优先从模型文件名识别（更可靠，不依赖维度猜测），维度作为兜底：
-    - 名称含 "bge" → "bge"（CLS 池化）
-    - 名称含 "minilm"/"multilingual" → "minilm"（均值池化）
-    - 兜底：512 维 → "bge"，其他 → "minilm"
-
-    注意：不按输入数量判断，因为 Xenova 转出来的 BGE 也有 3 个输入。
-    """
-    name = model_name.lower()
-    if "bge" in name:
-        return "bge"
-    if "minilm" in name or "multilingual" in name:
-        return "minilm"
-
-    output_dim = session.get_outputs()[0].shape[-1]
-    output_dim = output_dim if isinstance(output_dim, int) else 0
-
-    if output_dim == 512:
-        return "bge"
-    return "minilm"
-
-
 class Embedder:
     """ONNX 嵌入模型封装"""
 
@@ -313,7 +286,7 @@ class Embedder:
         self._session: ort.InferenceSession | None = None
         self._tokenizer: Tokenizer | None = None
         self._dim: int = 0
-        self._model_type: str = "minilm"  # "bge" | "minilm"
+        self._model_type: str = "bge"
         # 向量 LRU 缓存（lru_cache 线程安全）：相同文本复用推理结果
         self._embed_lru = functools.lru_cache(maxsize=_EMBED_CACHE_SIZE)(
             self._embed_uncached
@@ -372,11 +345,11 @@ class Embedder:
 
         self._tokenizer = Tokenizer.from_file(str(tokenizer_path))
 
-        # 自动检测模型类型（优先按文件名识别）
-        self._model_type = _detect_model_type(self._session, model_file.name)
+        # 固定 bge 模型：CLS 池化（BGE 论文推荐：CLS token + L2 归一化）
+        self._model_type = "bge"
         self._dim = self._session.get_outputs()[0].shape[-1]
         if not isinstance(self._dim, int):
-            self._dim = 384  # 兜底
+            self._dim = 512  # 兜底（bge-small-zh 固定 512 维）
 
         # 缓存输入数量（session 创建后不会改变）
         self._num_inputs = _count_session_inputs(self._session)
@@ -413,32 +386,12 @@ class Embedder:
             )
         return inputs
 
-    def _pool(
-        self,
-        token_embeddings: np.ndarray,
-        attention_mask: np.ndarray,
-    ) -> np.ndarray:
-        """池化 + L2 归一化
+    def _pool(self, token_embeddings: np.ndarray) -> np.ndarray:
+        """CLS 池化 + L2 归一化（bge 论文推荐做法）"""
+        # BGE 论文推荐：CLS token（位置 0）+ L2 归一化
+        pooled = token_embeddings[:, 0, :]
 
-        - BGE 模型：取 [CLS] token（位置 0）
-        - MiniLM 模型：均值池化
-        """
-        if self._model_type == "bge":
-            # BGE 论文推荐：CLS token + L2 归一化
-            pooled = token_embeddings[:, 0, :]
-        else:
-            # MiniLM / sentence-transformers：均值池化
-            mask_expanded = np.expand_dims(attention_mask, axis=-1)
-            mask_expanded = np.broadcast_to(
-                mask_expanded, token_embeddings.shape
-            )
-            sum_embeddings = np.sum(token_embeddings * mask_expanded, axis=1)
-            sum_mask = np.clip(
-                mask_expanded.sum(axis=1), a_min=1e-9, a_max=None
-            )
-            pooled = sum_embeddings / sum_mask
-
-        # L2 归一化（两个模型都做）
+        # L2 归一化
         norm = np.linalg.norm(pooled, axis=-1, keepdims=True)
         return pooled / np.clip(norm, a_min=1e-9, a_max=None)
 
@@ -457,7 +410,7 @@ class Embedder:
         )
         outputs = self._session.run(None, inputs)
 
-        normalized = self._pool(outputs[0], inputs["attention_mask"])
+        normalized = self._pool(outputs[0])
         return tuple(normalized[0].tolist())
 
     def embed_batch(self, texts: list[str]) -> list[list[float]]:
@@ -500,8 +453,7 @@ class Embedder:
         inputs = self._build_batch_inputs(batch_ids, batch_mask)
         outputs = self._session.run(None, inputs)
 
-        # 逐样本池化（batch 内长度不一致，mask 逐行不同）
+        # 逐样本 CLS 池化
         token_embeddings = outputs[0]  # (batch_size, max_len, dim)
-        attention_mask = np.array(batch_mask, dtype=np.int64)
-        normalized = self._pool(token_embeddings, attention_mask)
+        normalized = self._pool(token_embeddings)
         return normalized.tolist()

@@ -3,7 +3,7 @@
 [English](README_EN.md) | 中文
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v0.7.2-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-v0.7.3-blue" alt="Version">
   <img src="https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/SQLite-FTS5-003B57?logo=sqlite&logoColor=white" alt="SQLite">
   <img src="https://img.shields.io/badge/jieba-中文分词-blue" alt="jieba">
@@ -110,7 +110,7 @@ sinomem search "Docker"
 ## 核心特性
 
 - **中文 FTS5 搜索** — jieba 分词 + SQLite FTS5，写入和查询用同一套分词器，token 完全对齐
-- **语义搜索** — 本地 ONNX 嵌入模型（~24MB 起），可选安装，支持双模自动识别
+- **语义搜索** — 本地 ONNX 嵌入模型（~24MB 起），可选安装，使用中文友好的 bge 模型
 - **混合搜索** — RRF（倒数排名融合）自动平衡关键词与语义两路结果，无需手动调权
 - **MCP Server** — 标准协议，14 个工具，可接入任何支持 MCP 的 Agent
 - **多 Agent 自动同步插件** — Claude Code / LangChain / CrewAI / AutoGen / Hermes 开箱即用
@@ -175,11 +175,10 @@ curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --wi
 
 ## 下载嵌入模型（可选，用于语义搜索）
 
-本项目支持两种嵌入模型，根据你的场景选择其中一个下载即可（系统会自动识别模型类型）：
+本项目使用 **bge-small-zh-v1.5**（中文优化的轻量模型），按以下方式下载即可：
 
 | 模型 | 大小 | 维度 | 语言 | 适用场景 |
 |------|------|------|------|----------|
-| **paraphrase-multilingual-MiniLM-L12-v2** | ~113MB | 384 | 50+ 语言 | 多语言混用、中英夹杂内容多 |
 | **bge-small-zh-v1.5** | ~24MB | 512 | 中文优化 | 纯中文为主、追求更小体积和更好中文效果 |
 
 ```bash
@@ -192,14 +191,7 @@ export HF_ENDPOINT="https://hf-mirror.com"
 # 安装下载工具（国内用户建议使用清华 pip 镜像）
 pip install -i https://pypi.tuna.tsinghua.edu.cn/simple huggingface-hub
 
-# ─── 模型 A：paraphrase-multilingual-MiniLM-L12-v2（多语言，~113MB）───
-python -c "
-from huggingface_hub import hf_hub_download
-hf_hub_download('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', 'onnx/model_quantized.onnx', local_dir='models/embedding')
-hf_hub_download('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', 'tokenizer.json', local_dir='models/embedding')
-"
-
-# ─── 模型 B：bge-small-zh-v1.5（中文优化，~24MB）───
+# 下载 bge-small-zh-v1.5（中文优化，~24MB）
 python -c "
 from huggingface_hub import hf_hub_download
 hf_hub_download('Xenova/bge-small-zh-v1.5', 'onnx/model_quantized.onnx', local_dir='models/embedding')
@@ -452,7 +444,7 @@ bash uninstall.sh
 ## Roadmap 开发路线
 
 - [x] SQLite + FTS5 中文全文搜索（jieba 分词）
-- [x] 本地 ONNX 语义搜索（可选安装，双模自动识别）
+- [x] 本地 ONNX 语义搜索（可选安装，bge 中文轻量模型）
 - [x] 混合搜索（RRF 倒数排名融合）
 - [x] MCP Server（14 个工具）
 - [x] 多 Agent 自动同步插件（Claude Code / LangChain / Hermes）

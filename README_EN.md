@@ -3,7 +3,7 @@
 English | [中文](README.md)
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v0.7.2-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-v0.7.3-blue" alt="Version">
   <img src="https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/SQLite-FTS5-003B57?logo=sqlite&logoColor=white" alt="SQLite">
   <img src="https://img.shields.io/badge/jieba-CJK-blue" alt="jieba">
@@ -109,7 +109,7 @@ sinomem search "Docker"
 ## Core Features
 
 - **Chinese FTS5 Search** — jieba tokenization + SQLite FTS5, same tokenizer for write and query, token-aligned
-- **Semantic Search** — Local ONNX embedding model (~24MB min), optional install, dual-mode auto-detection
+- **Semantic Search** — Local ONNX embedding model (~24MB min), optional install, Chinese-friendly bge model
 - **Hybrid Search** — RRF (Reciprocal Rank Fusion), auto-balancing keyword and semantic results without manual weighting
 - **MCP Server** — Standard protocol, 14 tools, works with any MCP-compatible Agent
 - **Multi-Agent Auto-Sync Plugins** — Claude Code / LangChain / CrewAI / AutoGen / Hermes, all supported
@@ -184,11 +184,10 @@ curl -fsSL https://gitee.com/P1M0U/SinoMem/raw/main/install.sh | bash -s -- --wi
 
 ## Download Embedding Model (Optional, for Semantic Search)
 
-Two embedding models are supported — choose one based on your use case (the system auto-detects model type):
+This project uses **bge-small-zh-v1.5** (a lightweight Chinese-optimized model). Download as shown:
 
 | Model | Size | Dim | Language | Best For |
 |-------|------|-----|----------|----------|
-| **paraphrase-multilingual-MiniLM-L12-v2** | ~113MB | 384 | 50+ languages | Mixed-language content, Chinese + English |
 | **bge-small-zh-v1.5** | ~24MB | 512 | Chinese-optimized | Primarily Chinese, smaller size, better Chinese accuracy |
 
 ```bash
@@ -201,14 +200,7 @@ export HF_ENDPOINT="https://hf-mirror.com"
 # Install download tool (China users: use Tsinghua pip mirror)
 pip install -i https://pypi.tuna.tsinghua.edu.cn/simple huggingface-hub
 
-# ─── Option A: paraphrase-multilingual-MiniLM-L12-v2 (multilingual, ~113MB) ───
-python -c "
-from huggingface_hub import hf_hub_download
-hf_hub_download('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', 'onnx/model_quantized.onnx', local_dir='models/embedding')
-hf_hub_download('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', 'tokenizer.json', local_dir='models/embedding')
-"
-
-# ─── Option B: bge-small-zh-v1.5 (Chinese-optimized, ~24MB) ───
+# Download bge-small-zh-v1.5 (Chinese-optimized, ~24MB)
 python -c "
 from huggingface_hub import hf_hub_download
 hf_hub_download('Xenova/bge-small-zh-v1.5', 'onnx/model_quantized.onnx', local_dir='models/embedding')
@@ -461,7 +453,7 @@ Make sure the one-liner install script finished completely; **do not move or ren
 ## Roadmap
 
 - [x] SQLite + FTS5 Chinese full-text search (jieba tokenization)
-- [x] Local ONNX semantic search (optional install, dual-mode auto-detection)
+- [x] Local ONNX semantic search (optional install, bge Chinese lightweight model)
 - [x] Hybrid search (RRF — Reciprocal Rank Fusion)
 - [x] MCP Server (14 tools)
 - [x] Multi-agent auto-sync plugins (Claude Code / LangChain / Hermes)
